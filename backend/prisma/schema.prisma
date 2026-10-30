@@ -1,0 +1,357 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  fullName  String
+  phone     String?
+  username  String   @unique
+  email     String?  @unique
+  password  String
+  role      String   @default("USER")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Major {
+  id                 Int     @id @default(autoincrement())
+  code               String  @unique
+  name               String
+  description        String?
+  matrixData         String? @db.LongText
+  enabledCoursesData String? @db.LongText
+
+  createdAt DateTime @default(now())
+
+  programId Int?
+  program   Program? @relation(fields: [programId], references: [id])
+
+  plos        PLO[]
+  clos        CLO[]
+  courses     Course[]
+  assessments Assessment[]
+  majorYears  MajorYear[]
+  students    Student[]
+}
+
+model AcademicYear {
+  id   Int @id @default(autoincrement())
+  year Int @unique
+
+  majors  MajorYear[]
+  courses CourseYear[]
+}
+
+model MajorYear {
+  id Int @id @default(autoincrement())
+
+  majorId        Int
+  academicYearId Int
+
+  major        Major        @relation(fields: [majorId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@unique([majorId, academicYearId])
+}
+
+model Program {
+  id          Int     @id @default(autoincrement())
+  code        String  @unique
+  name        String
+  description String?
+
+  createdAt DateTime @default(now())
+
+  majors Major[]
+}
+
+model PLO {
+  id                  Int     @id @default(autoincrement())
+  code                String
+  description         String
+  targetPercent       Int?
+  directTargetPercent Int?
+  isGroupHeader       Boolean @default(false)
+  parentId            Int?
+
+  major     Major    @relation(fields: [majorId], references: [id])
+  majorId   Int
+  parent    PLO?     @relation("PloHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  PLO[]    @relation("PloHierarchy")
+  matrices  Matrix[]
+  createdAt DateTime @default(now())
+
+  @@index([majorId, parentId])
+}
+
+model CLO {
+  id          Int    @id @default(autoincrement())
+  code        String
+  description String
+
+  majorId       Int
+  major         Major             @relation(fields: [majorId], references: [id])
+  matrices      Matrix[]
+  studentScores StudentCloScore[]
+  createdAt     DateTime          @default(now())
+
+  courseMappings CourseCLO[]
+}
+
+model Course {
+  id       Int    @id @default(autoincrement())
+  code     String @unique
+  name     String
+  credits  Int
+  semester Int?
+
+  moduleCode      String?
+  replacementCode String?
+  replacementName String?
+
+  majorId     Int
+  major       Major        @relation(fields: [majorId], references: [id])
+  courseYears CourseYear[]
+  createdAt   DateTime     @default(now())
+
+  cohortLinks   CourseCohort[]
+  studentScores StudentCloScore[]
+  matrixLinks   Matrix[]
+
+  cloMappings CourseCLO[]
+}
+
+model CourseYear {
+  id Int @id @default(autoincrement())
+
+  courseId       Int
+  academicYearId Int
+
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, academicYearId])
+}
+
+model Matrix {
+  id Int @id @default(autoincrement())
+
+  cloId    Int
+  ploId    Int
+  courseId Int?
+
+  level  Int
+  method String @default("TT") @db.VarChar(10)
+
+  clo    CLO     @relation(fields: [cloId], references: [id])
+  plo    PLO     @relation(fields: [ploId], references: [id])
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
+
+model Student {
+  id          Int               @id @default(autoincrement())
+  studentCode String            @unique
+  fullName    String
+  majorId     Int
+  cohortYear  Int
+  major       Major             @relation(fields: [majorId], references: [id])
+  cloScores   StudentCloScore[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([majorId, cohortYear])
+}
+
+model StudentCloScore {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  courseId  Int
+  cloId     Int
+  score     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  clo     CLO     @relation(fields: [cloId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId, cloId])
+  @@index([courseId, cloId])
+}
+
+model Assessment {
+  id Int @id @default(autoincrement())
+
+  majorId Int
+
+  ploRate Float
+  cloRate Float
+
+  major Major @relation(fields: [majorId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Cohort {
+  id          Int            @id @default(autoincrement())
+  year        Int            @unique
+  courseLinks CourseCohort[]
+  createdAt   DateTime       @default(now())
+}
+
+model CourseCohort {
+  id       Int @id @default(autoincrement())
+  courseId Int
+  cohortId Int
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  cohort Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, cohortId])
+  @@index([cohortId])
+}
+
+model SurveyForm {
+  id          Int              @id @default(autoincrement())
+  year        String           @db.VarChar(32)
+  code        String           @unique @db.VarChar(100)
+  title       String           @db.VarChar(255)
+  description String           @db.Text
+  isCdr       Boolean          @default(false)
+  link        String           @db.Text
+  level       String           @default("LV1") @db.VarChar(10)
+  enabled     Boolean          @default(true)
+  legacyLink  String           @db.Text
+  menu        String           @default("main") @db.VarChar(20)
+  classes     String           @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  questions   SurveyQuestion[]
+  responses   SurveyResponse[]
+}
+
+model SurveyQuestion {
+  id           Int        @id @default(autoincrement())
+  surveyFormId Int
+  questionText String     @db.LongText
+  type         String     @default("single") @db.VarChar(20)
+  required     Boolean    @default(true)
+  options      String     @db.LongText
+  groupNo      Int        @default(1)
+  groupTitle   String     @default("") @db.VarChar(255)
+  sortOrder    Int        @default(0)
+  surveyForm   SurveyForm @relation(fields: [surveyFormId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([surveyFormId, sortOrder])
+}
+
+model SurveyResponse {
+  id           Int        @id @default(autoincrement())
+  surveyFormId Int
+  answers      String     @db.LongText
+  submittedAt  DateTime   @default(now())
+  surveyForm   SurveyForm @relation(fields: [surveyFormId], references: [id], onDelete: Cascade)
+
+  @@index([surveyFormId, submittedAt])
+}
+
+model SurveyDashboardSetting {
+  id            Int     @id @default(1)
+  cdrConversion Boolean @default(false)
+}
+
+model AnalysisSetting {
+  id                   Int      @id @default(1)
+  ploThreshold         Float    @default(75)
+  cloThreshold         Float    @default(5)
+  enableContribution   Boolean  @default(true)
+  enableSelfAssessment Boolean  @default(false)
+  contributionLevels   String   @default("I,R,M") @db.VarChar(100)
+  updatedAt            DateTime @updatedAt
+}
+
+model SystemSetting {
+  id              Int      @id @default(1)
+  systemName     String   @default("NV-SMART-EDU") @db.VarChar(150)
+  institutionName String  @default("Trường Đại học Kiến trúc Đà Nẵng") @db.VarChar(255)
+  supportEmail   String   @default("") @db.VarChar(150)
+  supportPhone   String   @default("") @db.VarChar(50)
+  defaultLanguage String  @default("vi") @db.VarChar(10)
+  maintenanceMode Boolean @default(false)
+  updatedAt      DateTime @updatedAt
+}
+
+model DashboardSurveyForm {
+  id          Int                       @id @default(autoincrement())
+  code        String                    @unique @db.VarChar(100)
+  title       String                    @db.VarChar(255)
+  description String                    @db.Text
+  isCdr       Boolean                   @default(false)
+  enabled     Boolean                   @default(true)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  questions   DashboardSurveyQuestion[]
+  responses   DashboardSurveyResponse[]
+}
+
+model DashboardSurveyQuestion {
+  id              Int                 @id @default(autoincrement())
+  dashboardFormId Int
+  questionText    String              @db.LongText
+  type            String              @default("single") @db.VarChar(20)
+  required        Boolean             @default(true)
+  options         String              @db.LongText
+  groupNo         Int                 @default(1)
+  groupTitle      String              @default("") @db.VarChar(255)
+  sortOrder       Int                 @default(0)
+  dashboardForm   DashboardSurveyForm @relation(fields: [dashboardFormId], references: [id], onDelete: Cascade)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([dashboardFormId, sortOrder])
+}
+
+model DashboardSurveyResponse {
+  id              Int                 @id @default(autoincrement())
+  dashboardFormId Int
+  answers         String              @db.LongText
+  submittedAt     DateTime            @default(now())
+  dashboardForm   DashboardSurveyForm @relation(fields: [dashboardFormId], references: [id], onDelete: Cascade)
+
+  @@index([dashboardFormId, submittedAt])
+}
+
+
+model CourseCLO {
+  id       Int @id @default(autoincrement())
+  courseId Int
+  cloId    Int
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  clo    CLO    @relation(fields: [cloId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, cloId])
+  @@index([cloId])
+}

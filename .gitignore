@@ -1,0 +1,23 @@
+# Dependencies and build output
+**/node_modules/
+**/.next/
+**/dist/
+**/coverage/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Nested repository backups kept locally during Git migration
+backend/.git-backup-backend/
+frontend/.git-backup-frontend/
+
+# Local editor and operating-system files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.DS_Store
+Thumbs.db

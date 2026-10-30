@@ -1,0 +1,2 @@
+ALTER TABLE `PLO`
+ADD COLUMN `directTargetPercent` INTEGER NULL;
