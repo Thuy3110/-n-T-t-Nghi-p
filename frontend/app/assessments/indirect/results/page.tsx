@@ -94,7 +94,9 @@ function ResultsPageContent() {
     : new Date().getFullYear();
   const [majors, setMajors] = useState<MajorSummary[]>([]);
   const [selectedMajorId, setSelectedMajorId] = useState(requestedMajorId);
-  const [cohortYear, setCohortYear] = useState(initialCohortYear);
+  // Giữ giá trị dạng chuỗi để ô nhập có thể rỗng khi người dùng xóa.
+  // Khi nhập lại, Number(value) loại bỏ số 0 cũ ở đầu (ví dụ 05 -> 5).
+  const [cohortYear, setCohortYear] = useState(String(initialCohortYear));
   const [results, setResults] = useState<PloResultsData | null>(null);
   const [loadingMajors, setLoadingMajors] = useState(true);
   const [loadingResults, setLoadingResults] = useState(false);
@@ -144,7 +146,7 @@ function ResultsPageContent() {
     const controller = new AbortController();
 
     async function fetchResults() {
-      if (!selectedMajorId) {
+      if (!selectedMajorId || !cohortYear) {
         setResults(null);
         return;
       }
@@ -260,7 +262,7 @@ function ResultsPageContent() {
       if (rows.some((row) => row.majorCode.toUpperCase() !== selectedMajor.majorCode.toUpperCase())) {
         throw new Error(`Mã ngành trong file phải là ${selectedMajor.majorCode} đã chọn trên màn hình.`);
       }
-      if (rows.some((row) => row.cohortYear !== cohortYear)) {
+      if (rows.some((row) => row.cohortYear !== Number(cohortYear))) {
         throw new Error(`Năm khóa trong file phải khớp với khóa ${cohortYear} đã chọn trên màn hình.`);
       }
       const response = await fetch(`${API_BASE}/assessments/import-clo-scores`, {
@@ -452,7 +454,10 @@ function ResultsPageContent() {
                 min={1900}
                 max={2200}
                 value={cohortYear}
-                onChange={(event) => setCohortYear(Number(event.target.value))}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setCohortYear(value === "" ? "" : String(Number(value)));
+                }}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-blue-400 focus:bg-white"
               />
               <p className="mt-2 text-xs text-slate-500">

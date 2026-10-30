@@ -67,6 +67,11 @@ export class SurveysController {
     return this.surveysService.updateDashboardForm(id, dto);
   }
 
+  @Delete('dashboard/forms/:id')
+  removeDashboardForm(@Param('id', ParseIntPipe) id: number) {
+    return this.surveysService.removeDashboardForm(id);
+  }
+
   @Post()
   create(@Body() dto: CreateSurveyFormDto) {
     return this.surveysService.create(dto);

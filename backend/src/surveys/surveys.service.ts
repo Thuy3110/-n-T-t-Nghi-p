@@ -16,23 +16,49 @@ import { UpdateSurveyFormDto } from './dto/update-survey-form.dto';
 export class SurveysService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.surveyForm
-      .findMany({
+  async findAll() {
+    const [forms, dashboardForms] = await Promise.all([
+      this.prisma.surveyForm.findMany({
         orderBy: [{ year: 'desc' }, { id: 'desc' }],
+        include: { _count: { select: { questions: true, responses: true } } },
+      }),
+      this.prisma.dashboardSurveyForm.findMany({
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
         include: {
-          _count: {
-            select: { questions: true, responses: true },
-          },
+          _count: { select: { questions: true, responses: true } },
         },
-      })
-      .then((forms) =>
-        forms.map(({ _count, ...survey }) => ({
-          ...survey,
-          questionCount: _count.questions,
-          responseCount: _count.responses,
-        })),
-      );
+      }),
+    ]);
+
+    return [
+      ...forms.map(({ _count, ...survey }) => ({
+        ...survey,
+        source: 'standard' as const,
+        sourceId: survey.id,
+        questionCount: _count.questions,
+        responseCount: _count.responses,
+      })),
+      ...dashboardForms.map(({ _count, ...form }) => ({
+        id: -form.id,
+        sourceId: form.id,
+        source: 'dashboard' as const,
+        year: form.createdAt.getFullYear().toString(),
+        code: form.code,
+        title: form.title,
+        description: form.description,
+        isCdr: form.isCdr,
+        link: `/surveys/dashboard/forms/${form.id}`,
+        level: 'Dashboard',
+        enabled: form.enabled,
+        legacyLink: '',
+        menu: 'main',
+        classes: '',
+        createdAt: form.createdAt,
+        updatedAt: form.updatedAt,
+        questionCount: _count.questions,
+        responseCount: _count.responses,
+      })),
+    ].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
 
   async getDashboard() {
@@ -145,6 +171,11 @@ export class SurveysService {
       }
       throw error;
     }
+  }
+
+  async removeDashboardForm(id: number) {
+    await this.ensureDashboardFormExists(id);
+    return this.prisma.dashboardSurveyForm.delete({ where: { id } });
   }
 
   async findDashboardQuestions(dashboardFormId: number) {

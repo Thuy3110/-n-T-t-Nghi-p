@@ -14,6 +14,16 @@ export interface ImportScoreRow {
   excelRow?: number;
 }
 
+function normalizeCourseCode(value: string): string {
+  const compact = value
+    .trim()
+    .toUpperCase()
+    .replace(/O/g, '0')
+    .replace(/[^A-Z0-9]/g, '');
+  const match = compact.match(/^([A-Z]+)(\d+)$/);
+  return match ? `${match[1]}${Number(match[2])}` : compact;
+}
+
 @Injectable()
 export class StudentScoresService {
   constructor(private readonly prisma: PrismaService) {}
@@ -72,9 +82,17 @@ export class StudentScoresService {
           continue;
         }
 
-        const course = await this.prisma.course.findUnique({
-          where: { code: courseCode },
+        let course = await this.prisma.course.findFirst({
+          where: { code: courseCode, majorId: student.majorId },
         });
+
+        if (!course) {
+          const courses = await this.prisma.course.findMany({
+            where: { majorId: student.majorId },
+          });
+          const normalizedCourseCode = normalizeCourseCode(courseCode);
+          course = courses.find((item) => normalizeCourseCode(item.code) === normalizedCourseCode) ?? null;
+        }
 
         if (!course) {
           errors.push({

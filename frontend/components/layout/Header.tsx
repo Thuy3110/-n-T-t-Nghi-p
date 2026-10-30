@@ -1,5 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import DirectTopMenu from "./DirectTopMenu";
 import IndirectTopMenu from "./IndirectTopMenu";
 import SurveyTopMenu from "./SurveyTopMenu";
@@ -16,6 +17,14 @@ import {
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
+
+function formatRole(role?: string) {
+  const normalized = role?.trim().toUpperCase();
+  if (normalized === "SUPER_ADMIN" || normalized === "SUPER USER") return "SUPER USER";
+  if (normalized === "ADMIN") return "ADMIN";
+  if (normalized === "LECTURER" || normalized === "GIẢNG VIÊN") return "GIẢNG VIÊN";
+  return "USER";
+}
 
 export default function Header() {
   const [user, setUser] = useState<any>(null);
@@ -126,7 +135,7 @@ export default function Header() {
                   </h3>
 
                   <p className="text-[12px] uppercase tracking-wide text-[#8190b3] mt-1">
-                    SUPER USER
+                    {formatRole(user?.role)}
                   </p>
                 </div>
 
@@ -151,9 +160,9 @@ export default function Header() {
             </div>
 
             <div className="py-3">
-              <DropdownItem icon={User} label="Hồ sơ cá nhân" />
-              <DropdownItem icon={Settings} label="Cài đặt cá nhân" />
-              <DropdownItem icon={Briefcase} label="Công việc cần thực hiện" />
+              <DropdownItem icon={User} label="Hồ sơ cá nhân" href="/profile" />
+              <DropdownItem icon={Settings} label="Cài đặt cá nhân" href="/settings/personal" />
+              <DropdownItem icon={Briefcase} label="Công việc cần thực hiện" href="/tasks" />
             </div>
 
             <div className="border-t border-slate-200 py-3">
@@ -175,14 +184,16 @@ export default function Header() {
 function DropdownItem({
   icon: Icon,
   label,
+  href,
 }: {
   icon: any;
   label: string;
+  href: string;
 }) {
   return (
-    <button className="w-full h-12 px-5 flex items-center gap-4 text-[16px] text-slate-800 hover:bg-slate-50">
+    <Link href={href} className="w-full h-12 px-5 flex items-center gap-4 text-[16px] text-slate-800 hover:bg-slate-50">
       <Icon size={21} className="text-[#07508d]" />
       {label}
-    </button>
+    </Link>
   );
 }

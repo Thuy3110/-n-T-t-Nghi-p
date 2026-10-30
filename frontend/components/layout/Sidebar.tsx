@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   ClipboardCheck,
@@ -88,6 +88,11 @@ const menuGroups: MenuGroup[] = [
         href: "/admin/reset-password",
       },
       {
+        title: "Quản lý tài khoản",
+        icon: UserCheck,
+        href: "/users",
+      },
+      {
         title: "Đổi mật khẩu đăng nhập",
         icon: Lock,
         href: "/change-password",
@@ -105,6 +110,19 @@ export default function Sidebar() {
   const pathname = usePathname();
   const isSurveyPage = pathname.startsWith("/survey") || pathname.startsWith("/surveys");
   const [openSurvey, setOpenSurvey] = useState(isSurveyPage);
+  const [role, setRole] = useState("USER");
+  const isAdmin = ["ADMIN", "SUPER_ADMIN", "SUPER USER"].includes(role);
+
+  useEffect(() => {
+    const rawUser = localStorage.getItem("user");
+    if (!rawUser) return;
+    try {
+      const parsed = JSON.parse(rawUser) as { role?: string };
+      setRole(parsed.role?.trim().toUpperCase() || "USER");
+    } catch {
+      setRole("USER");
+    }
+  }, []);
 
   return (
     <aside style={{ backgroundColor: "#1ca6b8", color: "#ffffff" }} className="fixed left-0 top-0 h-screen w-[270px] text-white flex flex-col z-50 shadow-xl font-sans">
@@ -332,7 +350,7 @@ export default function Sidebar() {
           <hr style={{ border: "none", borderTop: "1px solid rgba(255, 255, 255, 0.2)", marginTop: "14px", marginBottom: "14px" }} />
 
           {/* Section 2: ADMIN (Chỉ có 2 danh mục) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: isAdmin ? "flex" : "none", flexDirection: "column", gap: "8px" }}>
             <div style={{ paddingLeft: "12px", paddingBottom: "2px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255, 255, 255, 0.45)" }}>
               ADMIN
             </div>
@@ -347,6 +365,18 @@ export default function Sidebar() {
             >
               <Settings size={18} className="shrink-0 opacity-75" />
               <span>Cài đặt hệ thống</span>
+            </Link>
+
+            <Link
+              href="/users"
+              style={{ height: "40px", paddingLeft: "14px", paddingRight: "14px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "12px", fontSize: "13.5px" }}
+              className={`transition ${pathname === "/users"
+                  ? "bg-white/20 text-white font-semibold"
+                  : "text-white/85 hover:text-white hover:bg-white/10"
+                }`}
+            >
+              <UserCheck size={18} className="shrink-0 opacity-75" />
+              <span>Quản lý tài khoản</span>
             </Link>
 
             <Link
@@ -390,6 +420,20 @@ export default function Sidebar() {
               <UserCheck size={18} className="shrink-0 opacity-75" />
               <span>Tạo mới tài khoản</span>
             </Link>
+
+            {isAdmin && (
+              <Link
+                href="/users"
+                style={{ display: "none", height: "40px", paddingLeft: "14px", paddingRight: "14px", borderRadius: "8px", alignItems: "center", gap: "12px", fontSize: "13.5px" }}
+                className={`transition ${pathname === "/users"
+                    ? "bg-white/20 text-white font-semibold"
+                    : "text-white/85 hover:text-white hover:bg-white/10"
+                  }`}
+              >
+                <UserCheck size={18} className="shrink-0 opacity-75" />
+              <span>{"Qu\u1ea3n l\u00fd t\u00e0i kho\u1ea3n"}</span>
+              </Link>
+            )}
 
             <Link
               href="/logout"

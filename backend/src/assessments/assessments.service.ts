@@ -11,6 +11,16 @@ export interface CloScoreImportRow {
   score: number;
 }
 
+function normalizeCourseCode(value: string): string {
+  const compact = value
+    .trim()
+    .toUpperCase()
+    .replace(/O/g, '0')
+    .replace(/[^A-Z0-9]/g, '');
+  const match = compact.match(/^([A-Z]+)(\d+)$/);
+  return match ? `${match[1]}${Number(match[2])}` : compact;
+}
+
 @Injectable()
 export class AssessmentsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -74,7 +84,7 @@ export class AssessmentsService {
       throw new NotFoundException(`Không tìm thấy ngành ${majorCode}.`);
     }
 
-    const coursesByCode = new Map(major.courses.map((course) => [course.code.toUpperCase(), course]));
+    const coursesByCode = new Map(major.courses.map((course) => [normalizeCourseCode(course.code), course]));
     const closByCode = new Map<string, { id: number; code: string }>();
     for (const clo of major.clos) {
       const normalizedCode = clo.code.toUpperCase();
@@ -85,7 +95,7 @@ export class AssessmentsService {
     }
 
     const prepared = normalized.map((row, index) => {
-      const course = coursesByCode.get(row.courseCode.toUpperCase());
+      const course = coursesByCode.get(normalizeCourseCode(row.courseCode));
       const clo = closByCode.get(row.cloCode.toUpperCase());
       if (!course) {
         throw new BadRequestException(`Dòng ${index + 2}: học phần ${row.courseCode} không thuộc ngành ${major.code}.`);

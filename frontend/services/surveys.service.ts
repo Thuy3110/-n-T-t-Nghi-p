@@ -5,6 +5,8 @@ export type SurveyMenu = "main" | "sidebar";
 
 export interface SurveyForm {
   id: number;
+  source?: "standard" | "dashboard";
+  sourceId?: number;
   year: string;
   code: string;
   title: string;
@@ -82,6 +84,10 @@ const surveysService = {
 
   async remove(id: number): Promise<void> {
     await api.delete(`/surveys/${id}`);
+  },
+
+  async removeDashboardForm(id: number): Promise<void> {
+    await api.delete(`/surveys/dashboard/forms/${id}`);
   },
 
   async getDashboard(): Promise<SurveyDashboard> {

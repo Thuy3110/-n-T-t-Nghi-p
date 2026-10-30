@@ -47,6 +47,12 @@ async function main() {
     create: { majorId: major.id, academicYearId: academicYear.id },
   });
 
+  const legacyCourse = await prisma.course.findUnique({ where: { code: 'DEMO-MH02' } });
+  const currentCourse = await prisma.course.findUnique({ where: { code: 'MH001' } });
+  if (legacyCourse && !currentCourse) {
+    await prisma.course.update({ where: { id: legacyCourse.id }, data: { code: 'MH001' } });
+  }
+
   const courses = await Promise.all([
     prisma.course.upsert({
       where: { code: 'DEMO-MH01' },
@@ -54,9 +60,9 @@ async function main() {
       create: { code: 'DEMO-MH01', name: 'Lập trình cơ bản', credits: 3, semester: 1, majorId: major.id },
     }),
     prisma.course.upsert({
-      where: { code: 'DEMO-MH02' },
+      where: { code: 'MH001' },
       update: { name: 'Cơ sở dữ liệu', majorId: major.id, credits: 3, semester: 2 },
-      create: { code: 'DEMO-MH02', name: 'Cơ sở dữ liệu', credits: 3, semester: 2, majorId: major.id },
+      create: { code: 'MH001', name: 'Cơ sở dữ liệu', credits: 3, semester: 2, majorId: major.id },
     }),
     prisma.course.upsert({
       where: { code: 'DEMO-MH03' },
@@ -128,6 +134,74 @@ async function main() {
   const assessment = await prisma.assessment.findFirst({ where: { majorId: major.id } });
   if (assessment) await prisma.assessment.update({ where: { id: assessment.id }, data: { ploRate: 86.7, cloRate: 8.2 } });
   else await prisma.assessment.create({ data: { majorId: major.id, ploRate: 86.7, cloRate: 8.2 } });
+
+  const survey = await prisma.surveyForm.upsert({
+    where: { code: 'DEMO-KS-SV' },
+    update: {
+      title: 'Khảo sát trải nghiệm học tập - dữ liệu mẫu',
+      enabled: true,
+      year: '2025-2026',
+    },
+    create: {
+      year: '2025-2026',
+      code: 'DEMO-KS-SV',
+      title: 'Khảo sát trải nghiệm học tập - dữ liệu mẫu',
+      description: 'Phiếu khảo sát minh họa cho hệ thống SMART-EDU.',
+      isCdr: false,
+      link: '/surveys/forms/demo',
+      level: 'LV1',
+      enabled: true,
+      legacyLink: '',
+      menu: 'main',
+      classes: 'DEMO-CNTT',
+    },
+  });
+  await prisma.surveyQuestion.deleteMany({ where: { surveyFormId: survey.id } });
+  const surveyQuestions = await prisma.surveyQuestion.createMany({
+    data: [
+      { surveyFormId: survey.id, questionText: 'Mức độ hài lòng với nội dung học phần?', type: 'single', options: JSON.stringify(['1', '2', '3', '4', '5']), groupNo: 1, groupTitle: 'Nội dung học tập', sortOrder: 1 },
+      { surveyFormId: survey.id, questionText: 'Mức độ hỗ trợ của giảng viên?', type: 'single', options: JSON.stringify(['1', '2', '3', '4', '5']), groupNo: 1, groupTitle: 'Nội dung học tập', sortOrder: 2 },
+      { surveyFormId: survey.id, questionText: 'Góp ý cải thiện học phần', type: 'text', options: JSON.stringify([]), required: false, groupNo: 2, groupTitle: 'Góp ý', sortOrder: 3 },
+    ],
+  });
+  const questionRows = await prisma.surveyQuestion.findMany({ where: { surveyFormId: survey.id }, orderBy: { sortOrder: 'asc' }, select: { id: true } });
+  await prisma.surveyResponse.deleteMany({ where: { surveyFormId: survey.id } });
+  await prisma.surveyResponse.createMany({
+    data: [
+      { surveyFormId: survey.id, answers: JSON.stringify({ [questionRows[0].id]: '4', [questionRows[1].id]: '5', [questionRows[2].id]: 'Nội dung rõ ràng.' }) },
+      { surveyFormId: survey.id, answers: JSON.stringify({ [questionRows[0].id]: '5', [questionRows[1].id]: '4', [questionRows[2].id]: 'Cần thêm bài tập thực hành.' }) },
+      { surveyFormId: survey.id, answers: JSON.stringify({ [questionRows[0].id]: '4', [questionRows[1].id]: '4', [questionRows[2].id]: 'Tốt.' }) },
+    ],
+  });
+
+  const dashboardSurvey = await prisma.dashboardSurveyForm.upsert({
+    where: { code: 'DEMO-KS-CN' },
+    update: { title: 'Khảo sát nhu cầu cải tiến chương trình - dữ liệu mẫu', enabled: true },
+    create: {
+      code: 'DEMO-KS-CN',
+      title: 'Khảo sát nhu cầu cải tiến chương trình - dữ liệu mẫu',
+      description: 'Phiếu mẫu dùng cho dashboard khảo sát.',
+      isCdr: true,
+      enabled: true,
+    },
+  });
+  await prisma.dashboardSurveyQuestion.deleteMany({ where: { dashboardFormId: dashboardSurvey.id } });
+  await prisma.dashboardSurveyQuestion.createMany({
+    data: [
+      { dashboardFormId: dashboardSurvey.id, questionText: 'Mức độ phù hợp của chương trình đào tạo?', type: 'single', options: JSON.stringify(['1', '2', '3', '4', '5']), groupNo: 1, groupTitle: 'Chương trình', sortOrder: 1 },
+      { dashboardFormId: dashboardSurvey.id, questionText: 'Nhà trường nên ưu tiên cải tiến nội dung nào?', type: 'text', options: JSON.stringify([]), required: false, groupNo: 2, groupTitle: 'Đề xuất', sortOrder: 2 },
+    ],
+  });
+  await prisma.dashboardSurveyResponse.deleteMany({ where: { dashboardFormId: dashboardSurvey.id } });
+  const dashboardQuestions = await prisma.dashboardSurveyQuestion.findMany({ where: { dashboardFormId: dashboardSurvey.id }, orderBy: { sortOrder: 'asc' }, select: { id: true } });
+  await prisma.dashboardSurveyResponse.createMany({
+    data: [
+      { dashboardFormId: dashboardSurvey.id, answers: JSON.stringify({ [dashboardQuestions[0].id]: '4', [dashboardQuestions[1].id]: 'Tăng hoạt động thực hành.' }) },
+      { dashboardFormId: dashboardSurvey.id, answers: JSON.stringify({ [dashboardQuestions[0].id]: '5', [dashboardQuestions[1].id]: 'Bổ sung học phần dự án.' }) },
+    ],
+  });
+  await prisma.surveyDashboardSetting.upsert({ where: { id: 1 }, update: { cdrConversion: true }, create: { id: 1, cdrConversion: true } });
+
   console.log('Đã nạp dữ liệu mẫu DEMO vào MySQL:', { major: major.code, courses: courses.length, plos: plos.length, clos: clos.length, students: students.length });
 }
 
