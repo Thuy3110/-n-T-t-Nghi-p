@@ -28,7 +28,14 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       alert("Đăng nhập thành công");
-      router.push("/dashboard");
+      const role = String(res.data.user.role || "USER").trim().toUpperCase();
+      router.push(
+        ["ADMIN", "SUPER_ADMIN", "SUPER USER"].includes(role)
+          ? "/dashboard"
+          : role === "LECTURER"
+            ? "/assessments/direct"
+            : "/tasks",
+      );
     } catch (error: any) {
       alert(error?.response?.data?.message || "Đăng nhập thất bại");
     } finally {

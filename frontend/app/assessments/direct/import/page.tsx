@@ -19,6 +19,11 @@ function auth(): HeadersInit {
 function norm(value: unknown) {
   return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
+function normalizeCourseCode(value: string) {
+  const compact = value.trim().toUpperCase().replace(/O/g, "0").replace(/[^A-Z0-9]/g, "");
+  const match = compact.match(/^([A-Z]+)(\d+)$/);
+  return match ? match[1] + Number(match[2]) : compact;
+}
 function valueOf(record: Record<string, unknown>, names: string[]) {
   const map = new Map(Object.entries(record).map(([key, value]) => [norm(key), value]));
   for (const name of names) {
@@ -100,7 +105,7 @@ export default function ImportPage() {
         if (!courseCode) errors.push("Thiếu MaMH");
         if (!code) errors.push("Thiếu MaCLO");
         if (!raw || !Number.isFinite(score) || score < 0 || score > 10) errors.push("Điểm phải từ 0 đến 10");
-        if (course && courseCode.toLowerCase() !== course.code.toLowerCase()) errors.push("Sai học phần đã chọn");
+        if (course && normalizeCourseCode(courseCode) !== normalizeCourseCode(course.code)) errors.push("Sai học phần đã chọn");
         if (cloCode && code.toLowerCase() !== cloCode.toLowerCase()) errors.push("Sai CLO đã chọn");
         return { studentCode, courseCode, cloCode: code, score: raw ? score : "", rowNumber: index + 2, status: errors.length ? "invalid" : "valid", message: errors.join("; ") };
       }));

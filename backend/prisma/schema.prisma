@@ -23,6 +23,34 @@ model User {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  preference UserPreference?
+  tasks     WorkTask[]
+}
+
+model UserPreference {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  language           String   @default("vi") @db.VarChar(10)
+  theme              String   @default("light") @db.VarChar(20)
+  emailNotifications Boolean  @default(true)
+  taskNotifications  Boolean  @default(true)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt          DateTime @updatedAt
+}
+
+model WorkTask {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  title       String    @db.VarChar(255)
+  description String    @db.Text
+  dueDate     DateTime?
+  priority    String    @default("MEDIUM") @db.VarChar(20)
+  status      String    @default("TODO") @db.VarChar(20)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, dueDate])
 }
 
 model Role {

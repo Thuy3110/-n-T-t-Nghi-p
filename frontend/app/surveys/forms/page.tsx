@@ -286,6 +286,10 @@ export default function SurveysManagementPage() {
   }
 
   function handleSelect(survey: SurveyForm) {
+    if (survey.source === "dashboard" && survey.sourceId) {
+      window.location.href = `/surveys/dashboard/forms/${survey.sourceId}`;
+      return;
+    }
     setIsCreating(false);
     setSelectedId(survey.id);
     setError("");
@@ -398,9 +402,13 @@ export default function SurveysManagementPage() {
     try {
       // Chỉ gửi trường cần cập nhật để tránh gửi id/createdAt/updatedAt
       // vào DTO PATCH của backend.
-      await surveysService.update(survey.id, {
-        enabled: !survey.enabled,
-      });
+      if (survey.source === "dashboard" && survey.sourceId) {
+        await surveysService.updateDashboardForm(survey.sourceId, {
+          enabled: !survey.enabled,
+        });
+      } else {
+        await surveysService.update(survey.id, { enabled: !survey.enabled });
+      }
 
       setSuccess(
         !survey.enabled
@@ -436,7 +444,11 @@ export default function SurveysManagementPage() {
     setSuccess("");
 
     try {
-      await surveysService.remove(survey.id);
+      if (survey.source === "dashboard" && survey.sourceId) {
+        await surveysService.removeDashboardForm(survey.sourceId);
+      } else {
+        await surveysService.remove(survey.id);
+      }
 
       setSuccess("Xóa khảo sát thành công.");
 
@@ -710,6 +722,11 @@ export default function SurveysManagementPage() {
                                     ? "Đang hoạt động"
                                     : "Đã tắt"}
                                 </span>
+                                {survey.source === "dashboard" && (
+                                  <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-700">
+                                    Dashboard
+                                  </span>
+                                )}
                               </div>
 
                               <h3 className="mt-2 break-words font-semibold text-slate-800">
