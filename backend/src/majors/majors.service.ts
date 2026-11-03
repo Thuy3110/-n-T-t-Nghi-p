@@ -11,6 +11,7 @@ export class MajorsService {
   findAll() {
     return this.prisma.major.findMany({
       include: {
+        program: true,
         plos: true,
         clos: true,
         courses: true,
@@ -31,6 +32,7 @@ export class MajorsService {
     return this.prisma.major.findUnique({
       where: { id },
       include: {
+        program: true,
         plos: {
           include: {
             matrices: {
@@ -109,13 +111,14 @@ export class MajorsService {
     }
 
     // 2. Update Major fields
-    const { code, name, description, matrixData, enabledCoursesData } = dto;
+    const { code, name, description, matrixData, enabledCoursesData, programId } = dto;
     const updateData: any = {};
     if (code !== undefined) updateData.code = code;
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (matrixData !== undefined) updateData.matrixData = matrixData;
     if (enabledCoursesData !== undefined) updateData.enabledCoursesData = enabledCoursesData;
+    if (programId !== undefined) updateData.programId = programId === null ? null : Number(programId);
 
     if (Object.keys(updateData).length > 0) {
       return this.prisma.major.update({
