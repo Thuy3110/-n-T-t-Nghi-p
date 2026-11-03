@@ -154,7 +154,7 @@ export default function Sidebar() {
 
         {/* Menu Items */}
         <nav style={{ display: "flex", flexDirection: "column" }}>
-          {/* Main Dashboard Link */}
+        {/* Main Dashboard Link */}
           <div>
             <Link
               href="/dashboard"
@@ -177,6 +177,18 @@ export default function Sidebar() {
             <div style={{ paddingLeft: "12px", paddingBottom: "2px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255, 255, 255, 0.45)" }}>
               BDCLGD
             </div>
+
+            <Link
+              href="/programs"
+              style={{ height: "40px", paddingLeft: "14px", paddingRight: "14px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "12px", fontSize: "13.5px" }}
+              className={`transition ${pathname === "/programs"
+                  ? "bg-white/20 text-white font-semibold"
+                  : "text-white/85 hover:text-white hover:bg-white/10"
+                }`}
+            >
+              <Folder size={18} className="shrink-0 opacity-75" />
+              <span>Quản lý CTĐT</span>
+            </Link>
 
             {/* Đo lường - đánh giá CĐR (GT) */}
             <Link

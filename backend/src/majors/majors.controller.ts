@@ -25,6 +25,8 @@ export class MajorsController {
     return majors.map((major: any) => ({
       id: major.id,
 
+      programId: major.programId,
+
       majorCode: major.code,
       majorName: major.name,
       createdAt: major.createdAt.toISOString(),

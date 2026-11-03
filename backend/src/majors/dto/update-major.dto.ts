@@ -20,6 +20,10 @@ export class UpdateMajorDto extends PartialType(CreateMajorDto) {
   cloThreshold?: number;
 
   @IsOptional()
+  @IsNumber()
+  programId?: number | null;
+
+  @IsOptional()
   @IsBoolean()
   enableContribution?: boolean;
 
