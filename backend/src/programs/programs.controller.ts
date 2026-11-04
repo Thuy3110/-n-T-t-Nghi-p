@@ -77,7 +77,7 @@ class AddMajorDto {
 
 type CtdtImportPayload = {
   ctdt: { MaCTDT: string; TenCTDT: string; MoTa?: string };
-  nganh: Array<{ MaNganh: string; TenNganh: string; MoTa?: string }>;
+  nganh: Array<{ MaNganh: string; TenNganh: string; MaCTDT: string; MoTa?: string }>;
   hocphan: Array<{ MaNganh: string; MaHocPhan: string; TenHocPhan: string; SoTinChi: number; HocKy?: number | string; MaHocPhanThayThe?: string; TenHocPhanThayThe?: string }>;
   plo: Array<{ MaNganh: string; MaPLO: string; MoTaPLO: string; NguongDat?: number | string; MaPLOCha?: string }>;
   clo: Array<{ MaNganh: string; MaHocPhan: string; MaCLO: string; MoTaCLO: string }>;

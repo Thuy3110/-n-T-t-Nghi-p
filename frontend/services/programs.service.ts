@@ -25,16 +25,16 @@ export type ProgramExport = {
     name: string;
     description?: string | null;
     evaluation: { averagePloRate: number | null; threshold: number; status: "Đạt" | "Chưa đạt" | "Chưa có dữ liệu" };
-    courses: Array<{ code: string; name: string; credits: number; semester?: number | null; moduleCode?: string | null; replacementCode?: string | null; replacementName?: string | null }>;
+    courses: Array<{ id: number; code: string; name: string; credits: number; semester?: number | null; moduleCode?: string | null; replacementCode?: string | null; replacementName?: string | null }>;
     plos: Array<{ id: number; code: string; description: string; targetPercent?: number | null; parentId?: number | null }>;
-    clos: Array<{ code: string; description: string }>;
+    clos: Array<{ code: string; description: string; courseCode: string }>;
   }>;
   matrices: Array<{ majorCode: string; courseCode: string; cloCode: string; ploCode: string; level: number; method: string }>;
 };
 
 export type CtdtImportPayload = {
   ctdt: { MaCTDT: string; TenCTDT: string; MoTa?: string };
-  nganh: Array<{ MaNganh: string; TenNganh: string; MoTa?: string }>;
+  nganh: Array<{ MaNganh: string; TenNganh: string; MaCTDT: string; MoTa?: string }>;
   hocphan: Array<{ MaNganh: string; MaHocPhan: string; TenHocPhan: string; SoTinChi: number; HocKy?: number | string; MaHocPhanThayThe?: string; TenHocPhanThayThe?: string }>;
   plo: Array<{ MaNganh: string; MaPLO: string; MoTaPLO: string; NguongDat?: number | string; MaPLOCha?: string }>;
   clo: Array<{ MaNganh: string; MaHocPhan: string; MaCLO: string; MoTaCLO: string }>;

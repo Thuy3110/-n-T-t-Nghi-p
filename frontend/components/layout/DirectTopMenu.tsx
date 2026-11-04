@@ -21,6 +21,10 @@ const menus = [
     href: "/assessments/direct/analysis",
   },
   {
+    title: "Đánh giá của giảng viên",
+    href: "/assessments/direct/lecturer",
+  },
+  {
     title: "Thoát",
     href: "/dashboard",
   },
@@ -30,12 +34,13 @@ export default function DirectTopMenu() {
   const pathname = usePathname();
 
   return (
-    <div className="flex items-center gap-8">
+    <div className="flex items-center gap-2 xl:gap-5">
       {menus.map((item) => {
         const active =
           pathname === item.href ||
           ((item.href === "/assessments/direct/matrix" ||
-            item.href === "/assessments/direct/analysis") &&
+            item.href === "/assessments/direct/analysis" ||
+            item.href === "/assessments/direct/lecturer") &&
             pathname.startsWith(`${item.href}/`));
 
         return (
@@ -45,7 +50,7 @@ export default function DirectTopMenu() {
             className={`
               h-[72px]
               flex items-center
-              text-[15px]
+              whitespace-nowrap text-xs xl:text-sm
               transition-colors
               ${
                 active
