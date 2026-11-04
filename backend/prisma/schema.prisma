@@ -13,18 +13,19 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  fullName  String
-  phone     String?
-  username  String   @unique
-  email     String?  @unique
-  password  String
-  role      String   @default("USER")
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  preference UserPreference?
-  tasks     WorkTask[]
+  id                     Int                     @id @default(autoincrement())
+  fullName               String
+  phone                  String?
+  username               String                  @unique
+  email                  String?                 @unique
+  password               String
+  role                   String                  @default("USER")
+  isActive               Boolean                 @default(true)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  preference             UserPreference?
+  tasks                  WorkTask[]
+  lecturerCloAssessments LecturerCloAssessment[]
 }
 
 model UserPreference {
@@ -84,8 +85,9 @@ model AcademicYear {
   id   Int @id @default(autoincrement())
   year Int @unique
 
-  majors  MajorYear[]
-  courses CourseYear[]
+  majors                 MajorYear[]
+  courses                CourseYear[]
+  lecturerCloAssessments LecturerCloAssessment[]
 }
 
 model MajorYear {
@@ -141,7 +143,28 @@ model CLO {
   studentScores StudentCloScore[]
   createdAt     DateTime          @default(now())
 
-  courseMappings CourseCLO[]
+  courseMappings         CourseCLO[]
+  lecturerCloAssessments LecturerCloAssessment[]
+}
+
+model LecturerCloAssessment {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  courseId       Int
+  cloId          Int
+  academicYearId Int
+  attainmentRate Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  clo          CLO          @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId, cloId, academicYearId])
+  @@index([courseId, academicYearId])
+  @@index([userId, academicYearId])
 }
 
 model Course {
@@ -160,9 +183,10 @@ model Course {
   courseYears CourseYear[]
   createdAt   DateTime     @default(now())
 
-  cohortLinks   CourseCohort[]
-  studentScores StudentCloScore[]
-  matrixLinks   Matrix[]
+  cohortLinks            CourseCohort[]
+  studentScores          StudentCloScore[]
+  matrixLinks            Matrix[]
+  lecturerCloAssessments LecturerCloAssessment[]
 
   cloMappings CourseCLO[]
 }
