@@ -4,7 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SaveLecturerCloAssessmentsDto } from './lecturer-clo-assessment.dto';
+import {
+  AssignLecturerCoursesDto,
+  SaveCourseCloAssessmentsDto,
+  SaveLecturerCloAssessmentsDto,
+} from './lecturer-clo-assessment.dto';
 
 @Injectable()
 export class LecturerCloAssessmentsService {
@@ -12,12 +16,300 @@ export class LecturerCloAssessmentsService {
 
   async listYears() {
     const years = await this.prisma.academicYear.findMany({
-      where: { lecturerCloAssessments: { some: {} } },
       select: { year: true },
       orderBy: { year: 'desc' },
     });
 
-    return years.map(({ year }) => year);
+    const yearSet = new Set(years.map(({ year }) => year));
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= currentYear - 4; y--) {
+      yearSet.add(y);
+    }
+
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }
+
+  async getMyCourses(userId: number, academicYear: number) {
+    if (
+      !Number.isInteger(academicYear) ||
+      academicYear < 1900 ||
+      academicYear > 2200
+    ) {
+      throw new BadRequestException('Năm học không hợp lệ.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, role: true },
+    });
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy tài khoản người dùng.');
+    }
+
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'SUPER USER'].includes(
+      user.role?.trim().toUpperCase(),
+    );
+
+    // 1. Tìm các môn được phân công qua bảng CourseLecturer
+    let assignedCourseIds: number[] = [];
+    try {
+      const assignments = await this.prisma.courseLecturer.findMany({
+        where: {
+          userId,
+          OR: [
+            { academicYear: { year: academicYear } },
+            { academicYearId: null },
+          ],
+        },
+        select: { courseId: true },
+      });
+      assignedCourseIds = assignments.map((a) => a.courseId);
+    } catch {
+      assignedCourseIds = [];
+    }
+
+    // 2. Tìm thêm các môn giảng viên đã từng đánh giá CLO trong năm học này
+    const assessedCourses = await this.prisma.lecturerCloAssessment.findMany({
+      where: {
+        userId,
+        academicYear: { year: academicYear },
+      },
+      select: { courseId: true },
+      distinct: ['courseId'],
+    });
+    for (const item of assessedCourses) {
+      if (!assignedCourseIds.includes(item.courseId)) {
+        assignedCourseIds.push(item.courseId);
+      }
+    }
+
+    const hasExplicitAssignments = assignedCourseIds.length > 0;
+
+    // 3. Truy vấn danh sách môn học
+    const courseWhere =
+      !isAdmin && hasExplicitAssignments
+        ? { id: { in: assignedCourseIds } }
+        : {};
+
+    const courses = await this.prisma.course.findMany({
+      where: courseWhere,
+      orderBy: [{ major: { code: 'asc' } }, { code: 'asc' }],
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        credits: true,
+        semester: true,
+        majorId: true,
+        major: { select: { id: true, code: true, name: true } },
+        cloMappings: {
+          orderBy: { clo: { code: 'asc' } },
+          select: {
+            clo: { select: { id: true, code: true, description: true } },
+          },
+        },
+      },
+    });
+
+    const courseIds = courses.map((c) => c.id);
+
+    // 4. Lấy ma trận CLO-PLO để bổ sung CLO cho môn nếu có
+    const matrixLinks = courseIds.length
+      ? await this.prisma.matrix.findMany({
+          where: { courseId: { in: courseIds } },
+          select: {
+            courseId: true,
+            clo: { select: { id: true, code: true, description: true } },
+          },
+        })
+      : [];
+
+    // 5. Lấy các đánh giá của năm học
+    const assessments = courseIds.length
+      ? await this.prisma.lecturerCloAssessment.findMany({
+          where: {
+            courseId: { in: courseIds },
+            academicYear: { year: academicYear },
+          },
+          include: {
+            user: { select: { id: true, fullName: true } },
+          },
+        })
+      : [];
+
+    // Ghép CLO cho từng môn
+    const cloByCourse = new Map<
+      number,
+      Map<number, { id: number; code: string; description: string }>
+    >();
+    for (const course of courses) {
+      const map = new Map<
+        number,
+        { id: number; code: string; description: string }
+      >();
+      for (const mapping of course.cloMappings) {
+        map.set(mapping.clo.id, mapping.clo);
+      }
+      cloByCourse.set(course.id, map);
+    }
+    for (const matrix of matrixLinks) {
+      if (matrix.courseId === null) continue;
+      cloByCourse.get(matrix.courseId)?.set(matrix.clo.id, matrix.clo);
+    }
+
+    // Ghép đánh giá theo cặp courseId:cloId
+    const assessmentsByPair = new Map<string, typeof assessments>();
+    for (const assessment of assessments) {
+      const key = `${assessment.courseId}:${assessment.cloId}`;
+      const list = assessmentsByPair.get(key) ?? [];
+      list.push(assessment);
+      assessmentsByPair.set(key, list);
+    }
+
+    const courseList = courses.map((course) => {
+      const clos = [...(cloByCourse.get(course.id)?.values() ?? [])]
+        .sort((a, b) => a.code.localeCompare(b.code))
+        .map((clo) => {
+          const entries =
+            assessmentsByPair.get(`${course.id}:${clo.id}`) ?? [];
+          const myEntry = entries.find((e) => e.userId === userId);
+          const averageRate = entries.length
+            ? Number(
+                (
+                  entries.reduce((sum, e) => sum + e.attainmentRate, 0) /
+                  entries.length
+                ).toFixed(2),
+              )
+            : null;
+
+          return {
+            id: clo.id,
+            code: clo.code,
+            description: clo.description,
+            myRate: myEntry ? myEntry.attainmentRate : null,
+            averageRate,
+            lecturerCount: entries.length,
+          };
+        });
+
+      const evaluatedCloCount = clos.filter((c) => c.myRate !== null).length;
+      const totalCloCount = clos.length;
+      const isEvaluated =
+        totalCloCount > 0 && evaluatedCloCount === totalCloCount;
+
+      return {
+        id: course.id,
+        code: course.code,
+        name: course.name,
+        credits: course.credits,
+        semester: course.semester,
+        major: course.major,
+        isAssigned: assignedCourseIds.includes(course.id),
+        evaluatedCloCount,
+        totalCloCount,
+        isEvaluated,
+        clos,
+      };
+    });
+
+    return {
+      lecturer: {
+        id: user.id,
+        fullName: user.fullName,
+        role: user.role,
+      },
+      academicYear,
+      hasExplicitAssignments,
+      courses: courseList,
+    };
+  }
+
+  async saveCourseAssessments(
+    userId: number,
+    data: SaveCourseCloAssessmentsDto,
+  ) {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      throw new BadRequestException('Tài khoản giảng viên không hợp lệ.');
+    }
+    if (
+      !Number.isInteger(data.academicYear) ||
+      data.academicYear < 1900 ||
+      data.academicYear > 2200
+    ) {
+      throw new BadRequestException('Năm học không hợp lệ.');
+    }
+
+    const course = await this.prisma.course.findUnique({
+      where: { id: data.courseId },
+      include: {
+        cloMappings: { select: { cloId: true } },
+      },
+    });
+    if (!course) {
+      throw new NotFoundException(
+        `Không tìm thấy học phần có ID ${data.courseId}.`,
+      );
+    }
+
+    for (const [index, item] of data.assessments.entries()) {
+      if (
+        item.attainmentRate !== null &&
+        (!Number.isFinite(item.attainmentRate) ||
+          item.attainmentRate < 0 ||
+          item.attainmentRate > 100)
+      ) {
+        throw new BadRequestException(
+          `Dòng ${index + 1}: Tỷ lệ đạt CLO phải từ 0% đến 100%.`,
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (transaction) => {
+      const year = await transaction.academicYear.upsert({
+        where: { year: data.academicYear },
+        create: { year: data.academicYear },
+        update: {},
+        select: { id: true },
+      });
+
+      for (const assessment of data.assessments) {
+        const key = {
+          userId_courseId_cloId_academicYearId: {
+            userId,
+            courseId: data.courseId,
+            cloId: assessment.cloId,
+            academicYearId: year.id,
+          },
+        };
+
+        if (assessment.attainmentRate === null) {
+          await transaction.lecturerCloAssessment.deleteMany({
+            where: key.userId_courseId_cloId_academicYearId,
+          });
+          continue;
+        }
+
+        await transaction.lecturerCloAssessment.upsert({
+          where: key,
+          create: {
+            ...key.userId_courseId_cloId_academicYearId,
+            attainmentRate: assessment.attainmentRate,
+          },
+          update: { attainmentRate: assessment.attainmentRate },
+        });
+      }
+    });
+
+    const savedCount = data.assessments.filter(
+      (a) => a.attainmentRate !== null,
+    ).length;
+
+    return {
+      message: `Đã lưu đánh giá ${savedCount} chuẩn đầu ra cho học phần ${course.code}.`,
+      courseId: course.id,
+      academicYear: data.academicYear,
+      savedCount,
+    };
   }
 
   async getMajorAssessments(
@@ -114,33 +406,33 @@ export class LecturerCloAssessmentsService {
         clos: [...(cloByCourse.get(course.id)?.values() ?? [])]
           .sort((left, right) => left.code.localeCompare(right.code))
           .map((clo) => {
-          const entries = assessmentsByPair.get(`${course.id}:${clo.id}`) ?? [];
-          const averageRate = entries.length
-            ? Number(
-                (
-                  entries.reduce(
-                    (total, entry) => total + entry.attainmentRate,
-                    0,
-                  ) / entries.length
-                ).toFixed(2),
-              )
-            : null;
+            const entries = assessmentsByPair.get(`${course.id}:${clo.id}`) ?? [];
+            const averageRate = entries.length
+              ? Number(
+                  (
+                    entries.reduce(
+                      (total, entry) => total + entry.attainmentRate,
+                      0,
+                    ) / entries.length
+                  ).toFixed(2),
+                )
+              : null;
 
-          return {
-            id: clo.id,
-            code: clo.code,
-            description: clo.description,
-            myRate:
-              entries.find((entry) => entry.userId === userId)
-                ?.attainmentRate ?? null,
-            averageRate,
-            lecturerCount: entries.length,
-            lecturerAssessments: entries.map((entry) => ({
-              lecturerName: entry.user.fullName,
-              attainmentRate: entry.attainmentRate,
-              updatedAt: entry.updatedAt,
-            })),
-          };
+            return {
+              id: clo.id,
+              code: clo.code,
+              description: clo.description,
+              myRate:
+                entries.find((entry) => entry.userId === userId)
+                  ?.attainmentRate ?? null,
+              averageRate,
+              lecturerCount: entries.length,
+              lecturerAssessments: entries.map((entry) => ({
+                lecturerName: entry.user.fullName,
+                attainmentRate: entry.attainmentRate,
+                updatedAt: entry.updatedAt,
+              })),
+            };
           }),
       })),
     };
@@ -235,6 +527,30 @@ export class LecturerCloAssessmentsService {
         const lecturerEntries = lecturerAssessments.filter(
           (entry) => entry.course.majorId === major.id,
         );
+        const reportCourseCloPairs = [...courseCloPairs];
+        const reportCourseCloPairKeys = new Set(
+          courseCloPairs.map(({ courseId, cloId }) => `${courseId}:${cloId}`),
+        );
+        const addReportCourseCloPair = (courseId: number, cloId: number) => {
+          const key = `${courseId}:${cloId}`;
+          if (!coursesById.has(courseId) || reportCourseCloPairKeys.has(key)) {
+            return;
+          }
+          reportCourseCloPairKeys.add(key);
+          reportCourseCloPairs.push({ courseId, cloId });
+        };
+        for (const matrix of matrices) {
+          if (
+            matrix.clo.majorId === major.id &&
+            matrix.plo.majorId === major.id &&
+            matrix.courseId !== null
+          ) {
+            addReportCourseCloPair(matrix.courseId, matrix.cloId);
+          }
+        }
+        for (const entry of lecturerEntries) {
+          addReportCourseCloPair(entry.courseId, entry.cloId);
+        }
         const entriesByPair = new Map<string, typeof lecturerAssessments>();
         for (const entry of lecturerEntries) {
           const key = `${entry.courseId}:${entry.cloId}`;
@@ -243,38 +559,47 @@ export class LecturerCloAssessmentsService {
           entriesByPair.set(key, entries);
         }
 
-        const cloAssessments = courseCloPairs.map(({ courseId, cloId }) => {
-          const course = coursesById.get(courseId)!;
-          const clo = course.cloMappings.find(
-            (mapping) => mapping.clo.id === cloId,
-          )!.clo;
-          const entries = entriesByPair.get(`${courseId}:${cloId}`) ?? [];
+        const cloAssessments = reportCourseCloPairs.flatMap(
+          ({ courseId, cloId }) => {
+            const course = coursesById.get(courseId);
+            if (!course) return [];
+            const entries = entriesByPair.get(`${courseId}:${cloId}`) ?? [];
+            const clo =
+              course.cloMappings.find((mapping) => mapping.clo.id === cloId)
+                ?.clo ??
+              matrices.find(
+                (matrix) =>
+                  matrix.courseId === courseId && matrix.cloId === cloId,
+              )?.clo ??
+              entries[0]?.clo;
+            if (!clo) return [];
 
-          return {
-            courseId,
-            courseCode: course.code,
-            courseName: course.name,
-            cloId,
-            cloCode: clo.code,
-            cloDescription: clo.description,
-            averageRate: entries.length
-              ? Number(
-                  (
-                    entries.reduce(
-                      (sum, entry) => sum + entry.attainmentRate,
-                      0,
-                    ) / entries.length
-                  ).toFixed(2),
-                )
-              : null,
-            lecturerCount: entries.length,
-            lecturerAssessments: entries.map((entry) => ({
-              lecturerName: entry.user.fullName,
-              attainmentRate: entry.attainmentRate,
-              updatedAt: entry.updatedAt,
-            })),
-          };
-        });
+            return [{
+              courseId,
+              courseCode: course.code,
+              courseName: course.name,
+              cloId,
+              cloCode: clo.code,
+              cloDescription: clo.description,
+              averageRate: entries.length
+                ? Number(
+                    (
+                      entries.reduce(
+                        (sum, entry) => sum + entry.attainmentRate,
+                        0,
+                      ) / entries.length
+                    ).toFixed(2),
+                  )
+                : null,
+              lecturerCount: entries.length,
+              lecturerAssessments: entries.map((entry) => ({
+                lecturerName: entry.user.fullName,
+                attainmentRate: entry.attainmentRate,
+                updatedAt: entry.updatedAt,
+              })),
+            }];
+          },
+        );
         const averageRateByPair = new Map(
           cloAssessments.map((assessment) => [
             `${assessment.courseId}:${assessment.cloId}`,
@@ -284,7 +609,11 @@ export class LecturerCloAssessmentsService {
 
         const weightedPloTotals = new Map<
           number,
-          { weightedTotal: number; totalWeight: number }
+          {
+            weightedTotal: number;
+            totalWeight: number;
+            hasMissingAssessment: boolean;
+          }
         >();
         const expandedMatrixKeys = new Set<string>();
         for (const matrix of matrices) {
@@ -307,15 +636,19 @@ export class LecturerCloAssessmentsService {
             expandedMatrixKeys.add(matrixKey);
 
             const rate = averageRateByPair.get(`${courseId}:${matrix.cloId}`);
-            if (rate === null || rate === undefined || matrix.level <= 0) {
-              continue;
-            }
+            if (matrix.level <= 0) continue;
+
             const total = weightedPloTotals.get(matrix.ploId) ?? {
               weightedTotal: 0,
               totalWeight: 0,
+              hasMissingAssessment: false,
             };
-            total.weightedTotal += rate * matrix.level;
-            total.totalWeight += matrix.level;
+            if (rate === null || rate === undefined) {
+              total.hasMissingAssessment = true;
+            } else {
+              total.weightedTotal += rate * matrix.level;
+              total.totalWeight += matrix.level;
+            }
             weightedPloTotals.set(matrix.ploId, total);
           }
         }
@@ -325,7 +658,9 @@ export class LecturerCloAssessmentsService {
           const total = weightedPloTotals.get(plo.id);
           ploRates.set(
             plo.id,
-            total && total.totalWeight > 0
+            total &&
+              total.totalWeight > 0 &&
+              !total.hasMissingAssessment
               ? Number((total.weightedTotal / total.totalWeight).toFixed(2))
               : null,
           );
@@ -602,6 +937,84 @@ export class LecturerCloAssessmentsService {
       message: 'Đã lưu đánh giá CLO của giảng viên.',
       academicYear: data.academicYear,
       savedCount,
+    };
+  }
+
+  async getAssignments() {
+    const lecturers = await this.prisma.user.findMany({
+      where: {
+        role: { in: ['LECTURER', 'USER'] },
+      },
+      select: {
+        id: true,
+        fullName: true,
+        username: true,
+        role: true,
+        assignedCourses: {
+          include: {
+            course: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                major: { select: { code: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { fullName: 'asc' },
+    });
+
+    const courses = await this.prisma.course.findMany({
+      orderBy: { code: 'asc' },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        major: { select: { id: true, code: true, name: true } },
+      },
+    });
+
+    return {
+      lecturers: lecturers.map((l) => ({
+        id: l.id,
+        fullName: l.fullName,
+        username: l.username,
+        role: l.role,
+        courses: l.assignedCourses.map((ac) => ac.course),
+      })),
+      allCourses: courses,
+    };
+  }
+
+  async assignCourses(data: AssignLecturerCoursesDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: data.userId },
+    });
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy tài khoản người dùng.');
+    }
+
+    await this.prisma.$transaction(async (transaction) => {
+      // Xóa các phân công cũ của giảng viên này
+      await transaction.courseLecturer.deleteMany({
+        where: { userId: data.userId },
+      });
+
+      // Tạo các phân công mới
+      if (data.courseIds.length > 0) {
+        await transaction.courseLecturer.createMany({
+          data: data.courseIds.map((courseId) => ({
+            userId: data.userId,
+            courseId,
+          })),
+        });
+      }
+    });
+
+    return {
+      message: `Đã cập nhật phân công ${data.courseIds.length} môn học cho giảng viên ${user.fullName}.`,
     };
   }
 

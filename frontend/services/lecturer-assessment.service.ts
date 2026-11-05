@@ -107,6 +107,48 @@ export type SaveLecturerAssessmentPayload = {
   }>;
 };
 
+export type MyAssignedCourse = {
+  id: number;
+  code: string;
+  name: string;
+  credits: number;
+  semester: number | null;
+  major: { id: number; code: string; name: string };
+  isAssigned: boolean;
+  evaluatedCloCount: number;
+  totalCloCount: number;
+  isEvaluated: boolean;
+  clos: Array<{
+    id: number;
+    code: string;
+    description: string;
+    myRate: number | null;
+    averageRate: number | null;
+    lecturerCount: number;
+  }>;
+};
+
+export type MyCoursesResponse = {
+  lecturer: {
+    id: number;
+    fullName: string;
+    role: string;
+  };
+  academicYear: number;
+  hasExplicitAssignments: boolean;
+  courses: MyAssignedCourse[];
+};
+
+export type SaveCourseAssessmentPayload = {
+  courseId: number;
+  academicYear: number;
+  assessments: Array<{
+    courseId?: number;
+    cloId: number;
+    attainmentRate: number | null;
+  }>;
+};
+
 export async function getLecturerAssessmentYears() {
   const response = await api.get<number[]>("/assessments/lecturer-clo/years");
   return response.data;
@@ -139,5 +181,60 @@ export async function saveLecturerAssessments(
     academicYear: number;
     savedCount: number;
   }>("/assessments/lecturer-clo", payload);
+  return response.data;
+}
+
+export async function getMyAssignedCourses(academicYear: number) {
+  const response = await api.get<MyCoursesResponse>(
+    "/assessments/lecturer-clo/my-courses",
+    { params: { academicYear } },
+  );
+  return response.data;
+}
+
+export async function saveCourseAssessments(
+  payload: SaveCourseAssessmentPayload,
+) {
+  const response = await api.post<{
+    message: string;
+    courseId: number;
+    academicYear: number;
+    savedCount: number;
+  }>("/assessments/lecturer-clo/course", payload);
+  return response.data;
+}
+
+export async function getCourseAssignments() {
+  const response = await api.get<{
+    lecturers: Array<{
+      id: number;
+      fullName: string;
+      username: string;
+      role: string;
+      courses: Array<{
+        id: number;
+        code: string;
+        name: string;
+        major: { code: string; name: string };
+      }>;
+    }>;
+    allCourses: Array<{
+      id: number;
+      code: string;
+      name: string;
+      major: { id: number; code: string; name: string };
+    }>;
+  }>("/assessments/lecturer-clo/assignments");
+  return response.data;
+}
+
+export async function assignCourses(payload: {
+  userId: number;
+  courseIds: number[];
+}) {
+  const response = await api.post<{ message: string }>(
+    "/assessments/lecturer-clo/assign",
+    payload,
+  );
   return response.data;
 }

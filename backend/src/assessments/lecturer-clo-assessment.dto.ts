@@ -4,6 +4,7 @@ import {
   IsArray,
   IsInt,
   IsNumber,
+  IsOptional,
   Min,
   ValidateIf,
   ValidateNested,
@@ -13,6 +14,20 @@ export class LecturerCloRateDto {
   @IsInt()
   @Min(1)
   courseId!: number;
+
+  @IsInt()
+  @Min(1)
+  cloId!: number;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  attainmentRate!: number | null;
+}
+
+export class CourseCloRateDto {
+  @IsOptional()
+  @IsInt()
+  courseId?: number;
 
   @IsInt()
   @Min(1)
@@ -40,4 +55,37 @@ export class SaveLecturerCloAssessmentsDto {
       `${item?.courseId ?? ''}:${item?.cloId ?? ''}`,
   )
   assessments!: LecturerCloRateDto[];
+}
+
+export class SaveCourseCloAssessmentsDto {
+  @IsInt()
+  @Min(1)
+  courseId!: number;
+
+  @IsInt()
+  @Min(1900)
+  academicYear!: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CourseCloRateDto)
+  @ArrayUnique(
+    (item: CourseCloRateDto) => `${item?.cloId ?? ''}`,
+  )
+  assessments!: CourseCloRateDto[];
+}
+
+export class AssignLecturerCoursesDto {
+  @IsInt()
+  @Min(1)
+  userId!: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  courseIds!: number[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1900)
+  academicYear?: number;
 }

@@ -168,15 +168,7 @@ describe('LecturerCloAssessmentsService', () => {
                     id: 8,
                     code: 'MH01',
                     name: 'Cơ sở dữ liệu',
-                    cloMappings: [
-                      {
-                        clo: {
-                          id: 12,
-                          code: 'CLO1',
-                          description: 'Phân tích dữ liệu',
-                        },
-                      },
-                    ],
+                    cloMappings: [],
                   },
                 ],
                 plos: [
@@ -200,7 +192,12 @@ describe('LecturerCloAssessmentsService', () => {
             cloId: 12,
             ploId: 15,
             level: 2,
-            clo: { majorId: 4 },
+            clo: {
+              id: 12,
+              majorId: 4,
+              code: 'CLO1',
+              description: 'Phân tích dữ liệu',
+            },
             plo: { majorId: 4 },
           },
         ]),
@@ -251,6 +248,131 @@ describe('LecturerCloAssessmentsService', () => {
       ploCode: 'PLO1',
       ploAttainmentRate: 70,
       ploStatus: 'Đạt',
+    });
+    expect(result.programs[0].majors[0].cloAssessments[0]).toMatchObject({
+      courseCode: 'MH01',
+      cloCode: 'CLO1',
+      averageRate: 70,
+      lecturerAssessments: [
+        { lecturerName: 'Giảng viên A', attainmentRate: 60 },
+        { lecturerName: 'Giảng viên B', attainmentRate: 80 },
+      ],
+    });
+  });
+
+  it('does not calculate a PLO while any contributing course CLO is unassessed', async () => {
+    const prisma = {
+      program: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 2,
+            code: 'CTDT-CNTT',
+            name: 'Chương trình Công nghệ thông tin',
+            description: null,
+            majors: [
+              {
+                id: 4,
+                code: 'CNTT',
+                name: 'Công nghệ thông tin',
+                courses: [
+                  {
+                    id: 8,
+                    code: 'MH01',
+                    name: 'Cơ sở dữ liệu',
+                    cloMappings: [
+                      {
+                        clo: {
+                          id: 12,
+                          code: 'CLO1',
+                          description: 'Phân tích dữ liệu',
+                        },
+                      },
+                      {
+                        clo: {
+                          id: 13,
+                          code: 'CLO2',
+                          description: 'Thiết kế dữ liệu',
+                        },
+                      },
+                    ],
+                  },
+                ],
+                plos: [
+                  {
+                    id: 15,
+                    code: 'PLO1',
+                    description: 'Năng lực dữ liệu',
+                    parentId: null,
+                    isGroupHeader: false,
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      },
+      matrix: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            courseId: 8,
+            cloId: 12,
+            ploId: 15,
+            level: 2,
+            clo: { majorId: 4 },
+            plo: { majorId: 4 },
+          },
+          {
+            courseId: 8,
+            cloId: 13,
+            ploId: 15,
+            level: 1,
+            clo: { majorId: 4 },
+            plo: { majorId: 4 },
+          },
+        ]),
+      },
+      lecturerCloAssessment: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            courseId: 8,
+            cloId: 12,
+            attainmentRate: 100,
+            user: { fullName: 'Giảng viên A' },
+            course: { id: 8, majorId: 4 },
+            clo: { id: 12, code: 'CLO1', description: 'Phân tích dữ liệu' },
+          },
+        ]),
+      },
+      analysisSetting: {
+        findUnique: jest.fn().mockResolvedValue({ ploThreshold: 70 }),
+      },
+    };
+    const service = new LecturerCloAssessmentsService(
+      prisma as unknown as PrismaService,
+    );
+
+    const result = await service.getProgramReport(2026);
+    const major = result.programs[0].majors[0];
+
+    expect(major.plos[0]).toMatchObject({
+      attainmentRate: null,
+      status: 'Chưa có dữ liệu',
+    });
+    expect(major.evaluation).toEqual({
+      averagePloRate: null,
+      threshold: 70,
+      status: 'Chưa có dữ liệu',
+    });
+    expect(result.programs[0].evaluation.status).toBe('Chưa có dữ liệu');
+    expect(major.cloPloAssessments[0]).toMatchObject({
+      averageRate: 100,
+      ploAttainmentRate: null,
+      ploStatus: 'Chưa có dữ liệu',
+    });
+    expect(major.cloPloAssessments[1]).toMatchObject({
+      averageRate: null,
+      ploAttainmentRate: null,
+      ploStatus: 'Chưa có dữ liệu',
     });
   });
 

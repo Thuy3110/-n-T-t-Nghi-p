@@ -21,10 +21,6 @@ const menus = [
     href: "/assessments/direct/analysis",
   },
   {
-    title: "Đánh giá của giảng viên",
-    href: "/assessments/direct/lecturer",
-  },
-  {
     title: "Thoát",
     href: "/dashboard",
   },
@@ -39,8 +35,7 @@ export default function DirectTopMenu() {
         const active =
           pathname === item.href ||
           ((item.href === "/assessments/direct/matrix" ||
-            item.href === "/assessments/direct/analysis" ||
-            item.href === "/assessments/direct/lecturer") &&
+            item.href === "/assessments/direct/analysis") &&
             pathname.startsWith(`${item.href}/`));
 
         return (
@@ -52,10 +47,9 @@ export default function DirectTopMenu() {
               flex items-center
               whitespace-nowrap text-xs xl:text-sm
               transition-colors
-              ${
-                active
-                  ? "text-[#165aa7] font-semibold border-b-2 border-[#165aa7]"
-                  : "text-slate-500 hover:text-slate-700"
+              ${active
+                ? "text-[#165aa7] font-semibold border-b-2 border-[#165aa7]"
+                : "text-slate-500 hover:text-slate-700"
               }
             `}
           >

@@ -1,5 +1,5 @@
-import PloResultsReport from "@/components/assessments/PloResultsReport";
+import ObeResultsReport from "@/components/assessments/ObeResultsReport";
 
 export default function DirectAssessmentResultsPage() {
-  return <PloResultsReport />;
+  return <ObeResultsReport />;
 }

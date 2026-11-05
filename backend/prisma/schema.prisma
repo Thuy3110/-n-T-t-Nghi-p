@@ -26,6 +26,7 @@ model User {
   preference             UserPreference?
   tasks                  WorkTask[]
   lecturerCloAssessments LecturerCloAssessment[]
+  assignedCourses        CourseLecturer[]
 }
 
 model UserPreference {
@@ -88,6 +89,7 @@ model AcademicYear {
   majors                 MajorYear[]
   courses                CourseYear[]
   lecturerCloAssessments LecturerCloAssessment[]
+  assignedCourses        CourseLecturer[]
 }
 
 model MajorYear {
@@ -145,6 +147,7 @@ model CLO {
 
   courseMappings         CourseCLO[]
   lecturerCloAssessments LecturerCloAssessment[]
+  
 }
 
 model LecturerCloAssessment {
@@ -187,6 +190,7 @@ model Course {
   studentScores          StudentCloScore[]
   matrixLinks            Matrix[]
   lecturerCloAssessments LecturerCloAssessment[]
+  assignedCourses        CourseLecturer[]
 
   cloMappings CourseCLO[]
 }
@@ -406,4 +410,21 @@ model CourseCLO {
 
   @@unique([courseId, cloId])
   @@index([cloId])
+}
+
+
+model CourseLecturer {
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  courseId       Int
+  academicYearId Int?
+  createdAt      DateTime      @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, courseId, academicYearId])
+  @@index([courseId])
+  @@index([userId])
 }
