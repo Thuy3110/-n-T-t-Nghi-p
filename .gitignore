@@ -21,3 +21,4 @@ frontend/.git-backup-frontend/
 !.vscode/launch.json
 .DS_Store
 Thumbs.db
+/backend/.git-backup-temp/
