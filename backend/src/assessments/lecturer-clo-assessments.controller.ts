@@ -12,7 +12,11 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LecturerCloAssessmentsService } from './lecturer-clo-assessments.service';
 import { LecturerAssessmentRoleGuard } from './lecturer-assessment-role.guard';
-import { SaveLecturerCloAssessmentsDto } from './lecturer-clo-assessment.dto';
+import {
+  AssignLecturerCoursesDto,
+  SaveCourseCloAssessmentsDto,
+  SaveLecturerCloAssessmentsDto,
+} from './lecturer-clo-assessment.dto';
 
 type AuthenticatedRequest = Request & {
   user: { sub: number };
@@ -28,6 +32,38 @@ export class LecturerCloAssessmentsController {
   @Get('years')
   listYears() {
     return this.lecturerCloAssessmentsService.listYears();
+  }
+
+  @Get('my-courses')
+  getMyCourses(
+    @Query('academicYear', ParseIntPipe) academicYear: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.lecturerCloAssessmentsService.getMyCourses(
+      request.user.sub,
+      academicYear,
+    );
+  }
+
+  @Post('course')
+  saveCourseAssessments(
+    @Body() data: SaveCourseCloAssessmentsDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.lecturerCloAssessmentsService.saveCourseAssessments(
+      request.user.sub,
+      data,
+    );
+  }
+
+  @Get('assignments')
+  getAssignments() {
+    return this.lecturerCloAssessmentsService.getAssignments();
+  }
+
+  @Post('assign')
+  assignCourses(@Body() data: AssignLecturerCoursesDto) {
+    return this.lecturerCloAssessmentsService.assignCourses(data);
   }
 
   @Get('report')

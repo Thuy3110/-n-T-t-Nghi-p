@@ -33,7 +33,7 @@ export default function LoginPage() {
         ["ADMIN", "SUPER_ADMIN", "SUPER USER"].includes(role)
           ? "/dashboard"
           : role === "LECTURER"
-            ? "/assessments/direct"
+            ? "/lecturer"
             : "/tasks",
       );
     } catch (error: any) {
