@@ -52,6 +52,7 @@ function DirectAnalysisSettings() {
   const [majorId, setMajorId] = useState<number | null>(null);
   const [thresholds, setThresholds] =
     useState<AnalysisThresholds | null>(null);
+  const [cloThresholdInput, setCloThresholdInput] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -117,6 +118,7 @@ function DirectAnalysisSettings() {
           ploThreshold: data.ploThreshold,
           cloThreshold: data.cloThreshold,
         });
+        setCloThresholdInput(null);
       } catch (cause) {
         if (cause instanceof Error && cause.name === "AbortError") return;
         console.error("Lỗi tải thiết lập phân tích trực tiếp:", cause);
@@ -137,6 +139,7 @@ function DirectAnalysisSettings() {
   async function selectMajor(nextMajorId: number) {
     setMajorId(nextMajorId);
     setThresholds(null);
+    setCloThresholdInput(null);
     setLoading(true);
     setError("");
     setNotice("");
@@ -159,6 +162,7 @@ function DirectAnalysisSettings() {
         ploThreshold: data.ploThreshold,
         cloThreshold: data.cloThreshold,
       });
+      setCloThresholdInput(null);
       const params = new URLSearchParams({ majorId: String(nextMajorId) });
       if (cohort) params.set("cohort", cohort);
       router.replace(
@@ -176,17 +180,26 @@ function DirectAnalysisSettings() {
     }
   }
 
-  async function saveSettings(nextThresholds = thresholds) {
-    if (majorId === null || nextThresholds === null) return;
+  async function saveSettings(nextThresholds?: AnalysisThresholds) {
+    if (majorId === null || (nextThresholds ?? thresholds) === null) return;
+    const currentThresholds = nextThresholds ?? thresholds;
+    if (currentThresholds === null) return;
+    const cloThreshold =
+      nextThresholds !== undefined
+        ? nextThresholds.cloThreshold
+        : cloThresholdInput === null
+          ? currentThresholds.cloThreshold
+          : Number(cloThresholdInput);
+    const valuesToSave = { ...currentThresholds, cloThreshold };
     if (
-      !Number.isFinite(nextThresholds.ploThreshold) ||
-      nextThresholds.ploThreshold < 0 ||
-      nextThresholds.ploThreshold > 100 ||
-      !Number.isFinite(nextThresholds.cloThreshold) ||
-      nextThresholds.cloThreshold < 1 ||
-      nextThresholds.cloThreshold > 10
+      !Number.isFinite(valuesToSave.ploThreshold) ||
+      valuesToSave.ploThreshold < 0 ||
+      valuesToSave.ploThreshold > 100 ||
+      !Number.isFinite(valuesToSave.cloThreshold) ||
+      valuesToSave.cloThreshold < 1 ||
+      valuesToSave.cloThreshold > 5
     ) {
-      setError("Ngưỡng PLO phải từ 0–100%, ngưỡng CLO từ 1–10.");
+      setError("Ngưỡng PLO phải từ 0–100%, ngưỡng CLO từ 1–5.");
       return;
     }
 
@@ -197,7 +210,7 @@ function DirectAnalysisSettings() {
       const response = await fetch(`${API_BASE_URL}/majors/${majorId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nextThresholds),
+        body: JSON.stringify(valuesToSave),
       });
       if (!response.ok) {
         throw new Error(
@@ -213,6 +226,7 @@ function DirectAnalysisSettings() {
         ploThreshold: data.ploThreshold,
         cloThreshold: data.cloThreshold,
       });
+      setCloThresholdInput(null);
       setNotice("Đã lưu thông số đánh giá cho ngành.");
     } catch (cause) {
       console.error("Lỗi lưu thiết lập phân tích trực tiếp:", cause);
@@ -343,28 +357,31 @@ function DirectAnalysisSettings() {
                   <span className="text-sm font-medium text-slate-700">
                     Ngưỡng đạt CLO (mức)
                   </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    step={0.1}
-                    value={thresholds?.cloThreshold ?? ""}
-                    disabled={loading || !thresholds}
-                    onChange={(event) =>
-                      setThresholds((current) =>
-                        current
-                          ? {
-                              ...current,
-                              cloThreshold:
-                                event.target.value === ""
-                                  ? 0
-                                  : Number(event.target.value),
-                            }
-                          : current
-                      )
-                    }
-                    className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#165aa7] disabled:bg-slate-100"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={
+                        cloThresholdInput ??
+                        (thresholds ? String(thresholds.cloThreshold) : "")
+                      }
+                      disabled={loading || !thresholds}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (!/^\d*([.,]\d*)?$/.test(value)) return;
+                        if (value !== "" && Number(value.replace(",", ".")) > 5) {
+                          setCloThresholdInput("5");
+                          return;
+                        }
+                        setCloThresholdInput(value);
+                        setError("");
+                      }}
+                      className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 pr-14 text-sm text-slate-800 outline-none focus:border-[#165aa7] disabled:bg-slate-100"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+                      / 5
+                    </span>
+                  </div>
                 </label>
               </div>
             </div>
