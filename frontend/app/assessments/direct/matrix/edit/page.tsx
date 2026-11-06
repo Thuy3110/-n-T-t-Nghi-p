@@ -25,7 +25,7 @@ interface CourseItem {
   credits: number;
 }
 
-const levelCodes: Record<number, string> = { 1: "I", 2: "R", 3: "M", 4: "A" };
+const levelCodes: Record<number, string> = { 1: "I", 2: "R", 3: "M" };
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -98,7 +98,7 @@ function normalizeMatrix(value: unknown) {
 
   for (const [key, cell] of Object.entries(record)) {
     if (cell === null || cell === 1 || cell === 2 || cell === 3 || cell === 4) {
-      matrix[key] = cell;
+      matrix[key] = cell === 4 ? 3 : cell;
     } else {
       throw new Error(`Giá trị ô ma trận "${key}" không hợp lệ.`);
     }
@@ -251,7 +251,7 @@ function MatrixEditForm() {
     return null;
   };
 
-  // Click handler to cycle values through I, R, M, A, then clear.
+  // Click handler cycles through I, R, M, then clears.
   const handleCellClick = (course: CourseItem, plo: PLOItem) => {
     if (!isCourseEnabled(course)) return; // Disallow edits on disabled rows
     const codeKey = `${course.code}-${plo.code}`;
@@ -265,10 +265,6 @@ function MatrixEditForm() {
       newVal = 2;
     } else if (currentVal === 2) {
       newVal = 3;
-    } else if (currentVal === 3) {
-      newVal = 4;
-    } else if (currentVal === 4) {
-      newVal = null;
     }
 
     setMatrix((prev) => ({
@@ -460,7 +456,6 @@ function MatrixEditForm() {
             ["I", "Introduce", "#ea580c"],
             ["R", "Reinforce", "#fbbf24"],
             ["M", "Mastery", "#059669"],
-            ["A", "Assessment", "#165aa7"],
           ].map(([code, label, color]) => (
             <div key={code} className="flex items-center gap-2 text-slate-600">
               <span className="h-3.5 w-3.5 rounded-[3px]" style={{ backgroundColor: color }} />
@@ -629,15 +624,6 @@ function MatrixEditForm() {
                             cursor: "not-allowed",
                           };
                         }
-                      } else if (value === 4) {
-                        cellStyle = {
-                          ...cellStyle,
-                          backgroundColor: "#165aa7",
-                          color: "#ffffff",
-                          border: "1px solid #165aa7",
-                          cursor: "pointer",
-                          boxShadow: "0 1px 3px rgba(22, 90, 167, 0.25)",
-                        };
                       } else if (value === 3) {
                         cellStyle = {
                           ...cellStyle,

@@ -66,8 +66,13 @@ const mappingLevels: MatrixLevel[] = [
   { value: 1, code: "I", label: "Introduce · Giới thiệu", color: "bg-orange-600 text-white", hover: "hover:bg-orange-700" },
   { value: 2, code: "R", label: "Reinforce · Củng cố", color: "bg-amber-400 text-white", hover: "hover:bg-amber-500" },
   { value: 3, code: "M", label: "Mastery · Thành thạo", color: "bg-emerald-600 text-white", hover: "hover:bg-emerald-700" },
-  { value: 4, code: "A", label: "Assessment · Đánh giá", color: "bg-blue-700 text-white", hover: "hover:bg-blue-800" },
 ];
+
+function normalizeMatrixValues(matrix: Record<string, number | null>) {
+  return Object.fromEntries(
+    Object.entries(matrix).map(([key, value]) => [key, value === 4 ? 3 : value]),
+  );
+}
 
 function MatrixViewContent() {
   const router = useRouter();
@@ -109,6 +114,7 @@ function MatrixViewContent() {
         let parsedEnabledCourses: Record<string, boolean> = {};
         try {
           parsedMatrix = data.matrixData ? JSON.parse(data.matrixData) as Record<string, number | null> : {};
+          parsedMatrix = normalizeMatrixValues(parsedMatrix);
           parsedEnabledCourses = data.enabledCoursesData
             ? JSON.parse(data.enabledCoursesData) as Record<string, boolean>
             : {};
@@ -319,7 +325,7 @@ function MatrixViewContent() {
                     ? "Ma trận học phần và mức đóng góp PLO đã lưu"
                     : mode === "assessment"
                       ? "Nhấn vào ô để chọn mức đánh giá từ 1 đến 3"
-                      : "Nhấn vào ô để chọn mức mapping I / R / M / A"}
+                      : "Nhấn vào ô để chọn mức mapping I / R / M"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -362,12 +368,12 @@ function MatrixViewContent() {
             </div>
 
             <div className="max-w-full overflow-x-auto">
-              <table className="w-max table-fixed border-separate border-spacing-0">
+              <table className="w-full table-fixed border-separate border-spacing-0">
                 <colgroup>
                   <col style={{ width: 72 }} />
                   <col style={{ width: 128 }} />
                   <col style={{ width: 220 }} />
-                  {(major?.plos ?? []).map((plo) => <col key={plo.id} style={{ width: 82 }} />)}
+                  {(major?.plos ?? []).map((plo) => <col key={plo.id} />)}
                 </colgroup>
                 <thead>
                   <tr className="bg-[#eaf3fc] text-xs font-semibold text-slate-700">
@@ -418,8 +424,7 @@ function MatrixViewContent() {
                                       value === 1 ? "bg-blue-100 text-blue-800"
                                         : value === 2 ? "bg-blue-300 text-blue-950"
                                           : value === 3 ? "bg-blue-700 text-white"
-                                            : value === 4 ? "bg-slate-700 text-white"
-                                              : "text-slate-300"
+                                            : "text-slate-300"
                                     }`}
                                   >
                                     {value ?? "—"}
@@ -486,7 +491,7 @@ function MatrixViewContent() {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs text-slate-500">
               <span>{courses.length} học phần · {major?.plos.length ?? 0} PLO</span>
-              <span>{mode === "mapping" ? "Mapping: I / R / M / A" : "Đánh giá: mức 1–3 theo màu trong chú thích"}</span>
+              <span>{mode === "mapping" ? "Mapping: I / R / M" : "Đánh giá: mức 1–3 theo màu trong chú thích"}</span>
             </div>
           </section>
         </div>
