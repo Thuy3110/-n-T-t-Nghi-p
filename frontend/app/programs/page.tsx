@@ -51,6 +51,20 @@ function downloadCtdtTemplate() {
   XLSX.writeFile(workbook, "format-CTDT-NV-SMART-EDU.xlsx");
 }
 
+function addCtdtSheet(
+  workbook: XLSX.WorkBook,
+  name: string,
+  rows: Record<string, unknown>[],
+) {
+  const definition = formatSheets.find((sheet) => sheet.name === name);
+  if (!definition) throw new Error(`Không tìm thấy định dạng sheet ${name}.`);
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.json_to_sheet(rows, { header: definition.columns }),
+    name,
+  );
+}
+
 const requiredImportSheets = formatSheets.map((sheet) => sheet.name);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -190,6 +204,8 @@ function validateCtdtWorkbook(workbook: XLSX.WorkBook) {
     }
   }
   const matrixKeys = new Set<string>();
+  const matrixCloKeys = new Set<string>();
+  const matrixPloKeys = new Set<string>();
   for (const [index, row] of matrixRows.entries()) {
     const line = index + 2;
     const majorCode = key(text(row, "MaNganh"));
@@ -200,10 +216,92 @@ function validateCtdtWorkbook(workbook: XLSX.WorkBook) {
     const matrixKey = `${majorCode}:${courseCode}:${cloCode}:${ploCode}`;
     if (matrixKeys.has(matrixKey)) errors.push(`MA_TRAN_CLO_PLO dòng ${line}: liên kết CLO-PLO bị trùng.`);
     matrixKeys.add(matrixKey);
+    matrixCloKeys.add(`${majorCode}:${courseCode}:${cloCode}`);
+    matrixPloKeys.add(`${majorCode}:${ploCode}`);
     const level = text(row, "MucDongGop").toUpperCase();
     if (!["I", "R", "M", "1", "2", "3"].includes(level)) errors.push(`MA_TRAN_CLO_PLO dòng ${line}: MucDongGop chỉ nhận I, R, M hoặc 1, 2, 3.`);
     if (!["TT", "GT"].includes(text(row, "PhuongPhap").toUpperCase())) errors.push(`MA_TRAN_CLO_PLO dòng ${line}: PhuongPhap chỉ nhận TT hoặc GT.`);
   }
+
+  const ploCodesByMajor = new Map<string, Set<string>>();
+  for (const { major, code } of ploParents) {
+    const codes = ploCodesByMajor.get(major) ?? new Set<string>();
+    codes.add(code);
+    ploCodesByMajor.set(major, codes);
+  }
+  const ploCodesWithChildren = new Set<string>();
+  for (const { major, code, parent } of ploParents) {
+    if (parent) ploCodesWithChildren.add(`${major}:${parent}`);
+    for (const possibleParent of ploCodesByMajor.get(major) ?? []) {
+      if (code.startsWith(`${possibleParent}.`)) {
+        ploCodesWithChildren.add(`${major}:${possibleParent}`);
+      }
+    }
+  }
+
+  for (const majorCode of majorCodes) {
+    const majorCourseCodes = new Set(
+      courseRows
+        .filter((row) => key(text(row, "MaNganh")) === majorCode)
+        .map((row) => key(text(row, "MaHocPhan"))),
+    );
+    if (!majorCourseCodes.size) warnings.push(`Ngành ${majorCode} chưa có học phần.`);
+    if (!ploRows.some((row) => key(text(row, "MaNganh")) === majorCode)) {
+      warnings.push(`Ngành ${majorCode} chưa có PLO; chưa thể đánh giá PLO.`);
+    }
+    if (!cloRows.some((row) => key(text(row, "MaNganh")) === majorCode)) {
+      warnings.push(`Ngành ${majorCode} chưa có CLO; giảng viên chưa thể đánh giá CLO.`);
+    }
+    if (!matrixRows.some((row) => key(text(row, "MaNganh")) === majorCode)) {
+      warnings.push(`Ngành ${majorCode} chưa có ma trận CLO–PLO; chưa thể tổng hợp kết quả PLO.`);
+    }
+    const coursesWithoutClo = courseRows
+      .filter(
+        (row) =>
+          key(text(row, "MaNganh")) === majorCode &&
+          ![...cloCourseKeys].some((cloKey) =>
+            cloKey.startsWith(
+              `${majorCode}:${key(text(row, "MaHocPhan"))}:`,
+            ),
+          ),
+      )
+      .map((row) => key(text(row, "MaHocPhan")));
+    if (coursesWithoutClo.length) {
+      warnings.push(
+        `Ngành ${majorCode} có học phần chưa được gán CLO: ${coursesWithoutClo.join(", ")}.`,
+      );
+    }
+    const closWithoutPloMapping = new Map<string, string[]>();
+    for (const row of cloRows) {
+      if (key(text(row, "MaNganh")) !== majorCode) continue;
+      const courseCode = key(text(row, "MaHocPhan"));
+      const cloCode = key(text(row, "MaCLO"));
+      if (matrixCloKeys.has(`${majorCode}:${courseCode}:${cloCode}`)) continue;
+      const missingClos = closWithoutPloMapping.get(courseCode) ?? [];
+      missingClos.push(cloCode);
+      closWithoutPloMapping.set(courseCode, missingClos);
+    }
+    if (closWithoutPloMapping.size) {
+      const missingCloSummary = [...closWithoutPloMapping]
+        .map(([courseCode, cloCodes]) => `${courseCode}: ${cloCodes.join(", ")}`)
+        .join("; ");
+      warnings.push(
+        `Ngành ${majorCode} có ${[...closWithoutPloMapping.values()].reduce((count, codes) => count + codes.length, 0)} CLO chưa được gán vào ma trận PLO (${missingCloSummary}).`,
+      );
+    }
+    const plosWithoutCloMapping = ploRows.filter((row) => {
+      const ploCode = key(text(row, "MaPLO"));
+      return key(text(row, "MaNganh")) === majorCode &&
+        !ploCodesWithChildren.has(`${majorCode}:${ploCode}`) &&
+        !matrixPloKeys.has(`${majorCode}:${ploCode}`);
+    }).length;
+    if (plosWithoutCloMapping) {
+      warnings.push(
+        `Ngành ${majorCode} có ${plosWithoutCloMapping} PLO chưa có liên kết CLO đóng góp.`,
+      );
+    }
+  }
+
   return { errors, warnings, counts: Object.fromEntries([...rowsBySheet.entries()].map(([name, rows]) => [name, rows.length])) };
 }
 
@@ -227,12 +325,12 @@ function downloadActualProgram(
   const workbook = XLSX.utils.book_new();
   const usedSheetNames = new Set(["ctdt", "nganh", "hocphan", "plo", "clo", "ma_tran_clo_plo", "danh_gia_ctdt", "tong_hop_ctdt"]);
   const { program } = data;
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{ MaCTDT: program.code, TenCTDT: program.name, MoTa: program.description || "" }]), "CTDT");
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data.majors.map((major) => ({ MaNganh: major.code, TenNganh: major.name, MaCTDT: program.code, MoTa: major.description || "" }))), "NGANH");
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data.majors.flatMap((major) => major.courses.map((course) => ({ MaNganh: major.code, MaHocPhan: course.code, TenHocPhan: course.name, SoTinChi: course.credits, HocKy: course.semester || "", MaHocPhanThayThe: course.replacementCode || "", TenHocPhanThayThe: course.replacementName || "" })))), "HOCPHAN");
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data.majors.flatMap((major) => major.plos.map((plo) => ({ MaNganh: major.code, MaPLO: plo.code, MoTaPLO: plo.description, NguongDat: plo.targetPercent ?? "", MaPLOCha: major.plos.find((parent) => parent.id === plo.parentId)?.code ?? "" })))), "PLO");
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data.majors.flatMap((major) => major.clos.map((clo) => ({ MaNganh: major.code, MaHocPhan: clo.courseCode, MaCLO: clo.code, MoTaCLO: clo.description })))), "CLO");
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data.matrices.map((matrix) => ({ MaNganh: matrix.majorCode, MaHocPhan: matrix.courseCode, MaCLO: matrix.cloCode, MaPLO: matrix.ploCode, MucDongGop: matrix.level, PhuongPhap: matrix.method }))), "MA_TRAN_CLO_PLO");
+  addCtdtSheet(workbook, "CTDT", [{ MaCTDT: program.code, TenCTDT: program.name, MoTa: program.description || "" }]);
+  addCtdtSheet(workbook, "NGANH", data.majors.map((major) => ({ MaNganh: major.code, TenNganh: major.name, MaCTDT: program.code, MoTa: major.description || "" })));
+  addCtdtSheet(workbook, "HOCPHAN", data.majors.flatMap((major) => major.courses.map((course) => ({ MaNganh: major.code, MaHocPhan: course.code, TenHocPhan: course.name, SoTinChi: course.credits, HocKy: course.semester || "", MaHocPhanThayThe: course.replacementCode || "", TenHocPhanThayThe: course.replacementName || "" }))));
+  addCtdtSheet(workbook, "PLO", data.majors.flatMap((major) => major.plos.map((plo) => ({ MaNganh: major.code, MaPLO: plo.code, MoTaPLO: plo.description, NguongDat: plo.targetPercent ?? "", MaPLOCha: major.plos.find((parent) => parent.id === plo.parentId)?.code ?? "" }))));
+  addCtdtSheet(workbook, "CLO", data.majors.flatMap((major) => major.clos.map((clo) => ({ MaNganh: major.code, MaHocPhan: clo.courseCode, MaCLO: clo.code, MoTaCLO: clo.description }))));
+  addCtdtSheet(workbook, "MA_TRAN_CLO_PLO", data.matrices.map((matrix) => ({ MaNganh: matrix.majorCode, MaHocPhan: matrix.courseCode, MaCLO: matrix.cloCode, MaPLO: matrix.ploCode, MucDongGop: matrix.level, PhuongPhap: matrix.method })));
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(report.majors.map((major) => ({ NamHoc: report.academicYear, MaCTDT: program.code, MaNganh: major.code, TenNganh: major.name, TyLePLO: major.evaluation.averagePloRate ?? "Chưa có dữ liệu", NguongDat: major.evaluation.threshold, KetQua: major.evaluation.status }))), "DANH_GIA_CTDT");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{ NamHoc: report.academicYear, MaCTDT: program.code, TenCTDT: program.name, NguongDat: report.evaluation.threshold, KetQua: report.evaluation.status }]), "TONG_HOP_CTDT");
   for (const major of report.majors) {
@@ -361,7 +459,11 @@ export default function ProgramsPage() {
         const rows = (sheet: string) => XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[sheet], { defval: "" });
         const ctdtRows = rows("CTDT");
         setImportPayload({ ctdt: ctdtRows[0] as CtdtImportPayload["ctdt"], nganh: rows("NGANH") as CtdtImportPayload["nganh"], hocphan: rows("HOCPHAN") as CtdtImportPayload["hocphan"], plo: rows("PLO") as CtdtImportPayload["plo"], clo: rows("CLO") as CtdtImportPayload["clo"], matrix: rows("MA_TRAN_CLO_PLO") as CtdtImportPayload["matrix"] });
-        setNotice("File CTĐT đúng cấu trúc và các mã liên kết hợp lệ. Có thể nhập dữ liệu vào hệ thống.");
+        setNotice(
+          result.warnings.length
+            ? "File đúng định dạng và các mã liên kết hợp lệ. Có cảnh báo về dữ liệu còn thiếu; hãy xem danh sách bên dưới trước khi nhập."
+            : "File đúng định dạng và các mã liên kết hợp lệ. Có thể nhập dữ liệu vào hệ thống.",
+        );
       }
     } catch (cause: unknown) {
       console.error("Lỗi đọc file Excel CTĐT:", cause);
@@ -387,6 +489,6 @@ export default function ProgramsPage() {
     {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}{notice && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</div>}
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-slate-100 p-5"><div><h2 className="text-lg font-semibold text-slate-900">Danh sách CTĐT</h2><p className="mt-1 text-sm text-slate-500">Dữ liệu được lấy từ MySQL qua API.</p></div><button onClick={() => void loadPrograms()} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"><RefreshCw size={16} /> Làm mới</button></div>{loading ? <p className="p-8 text-center text-sm text-slate-500">Đang tải dữ liệu...</p> : programs.length === 0 ? <p className="p-8 text-center text-sm text-slate-500">Chưa có chương trình đào tạo.</p> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Mã CTĐT</th><th className="px-5 py-3">Tên chương trình</th><th className="px-5 py-3">Ngành</th><th className="px-5 py-3">Cấu trúc dữ liệu</th><th className="px-5 py-3">Thao tác</th></tr></thead><tbody className="divide-y divide-slate-100">{programs.map((program) => <tr key={program.id}><td className="px-5 py-4 font-semibold text-blue-700">{program.code}</td><td className="px-5 py-4"><p className="font-medium text-slate-800">{program.name}</p><p className="mt-1 text-xs text-slate-500">{program.description || "Chưa có mô tả"}</p></td><td className="px-5 py-4">{program.majors.length ? program.majors.map((major) => <div key={major.id} className="mb-1">{major.code} - {major.name}</div>) : <span className="text-slate-400">Chưa gán ngành</span>}</td><td className="px-5 py-4 text-xs text-slate-600">{program.majors.reduce((sum, major) => sum + (major._count?.courses || 0), 0)} học phần · {program.majors.reduce((sum, major) => sum + (major._count?.plos || 0), 0)} PLO · {program.majors.reduce((sum, major) => sum + (major._count?.clos || 0), 0)} CLO</td><td className="px-5 py-4"><div className="flex items-center gap-1"><button onClick={() => void exportProgram(program)} className="rounded-lg p-2 text-blue-700 hover:bg-blue-50" title="Xuất dữ liệu CTĐT hiện tại"><Download size={17} /></button><button onClick={() => void remove(program)} disabled={program.majors.length > 0} title={program.majors.length > 0 ? "Không thể xóa CTĐT đang có ngành" : "Xóa CTĐT"} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30"><Trash2 size={17} /></button></div></td></tr>)}</tbody></table></div>}</section>
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900"><FileSpreadsheet size={19} /> Cấu trúc file Excel CTĐT</h2><p className="mt-1 text-sm text-slate-500">Phần này hướng dẫn cấu trúc file dùng khi tải format, chỉnh sửa và upload lại. Các mã ở sheet con phải khớp với mã ở sheet cha để hệ thống lưu đúng quan hệ dữ liệu.</p><div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">{formatSheets.map((sheet) => { const purpose = sheet.name === "CTDT" ? "Thông tin chung của chương trình đào tạo" : sheet.name === "NGANH" ? "Ngành được liên kết với chương trình đào tạo" : sheet.name === "HOCPHAN" ? "Các học phần thuộc ngành" : sheet.name === "PLO" ? "Chuẩn đầu ra của ngành" : sheet.name === "CLO" ? "Chuẩn đầu ra của từng học phần" : "Liên kết CLO với PLO và mức đóng góp"; return <div key={sheet.name} className="rounded-lg border border-slate-200 p-4"><p className="font-semibold text-slate-800">{sheet.name}</p><p className="mt-1 text-xs text-slate-500">{purpose}</p><p className="mt-2 text-xs text-blue-700">{sheet.columns.join(" · ")}</p>{sheet.name === "MA_TRAN_CLO_PLO" && <p className="mt-2 text-xs text-slate-500">MucDongGop: I/R/M hoặc 1/2/3 · PhuongPhap: TT/GT</p>}{sheet.name === "PLO" && <p className="mt-2 text-xs text-slate-500">MaPLOCha dùng khi PLO có quan hệ kế thừa.</p>}</div>; })}</div><p className="mt-4 text-xs text-slate-500">Lưu ý: sheet CTDT thường có một dòng; các sheet còn lại có thể có nhiều dòng. Sheet HUONG_DAN trong file tải xuống chỉ dùng để giải thích quy tắc, không phải dữ liệu bắt buộc.</p></section>
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900"><Upload size={19} /> Kiểm tra và nhập file CTĐT</h2><p className="mt-1 text-sm text-slate-500">Tải file Excel lên để kiểm tra trước. Khi hợp lệ, bấm nút nhập để cập nhật dữ liệu vào MySQL.</p></div><label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"><Upload size={16} /> Chọn file Excel<input type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => void validateUpload(event)} /></label></div>{validation && <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4"><p className="font-semibold text-slate-800">{validation.fileName}</p><div className={`mt-3 flex items-start gap-2 text-sm ${validation.errors.length ? "text-red-700" : "text-emerald-700"}`}>{validation.errors.length ? <AlertCircle size={18} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={18} className="mt-0.5 shrink-0" />}<span>{validation.errors.length ? `Có ${validation.errors.length} lỗi cần sửa trước khi nhập.` : "File hợp lệ về cấu trúc và dữ liệu liên kết."}</span></div>{validation.errors.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-700">{validation.errors.slice(0, 30).map((message, index) => <li key={`${message}-${index}`}>{message}</li>)}{validation.errors.length > 30 && <li>... và {validation.errors.length - 30} lỗi khác.</li>}</ul>}{validation.warnings.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-700">{validation.warnings.map((message) => <li key={message}>{message}</li>)}</ul>}<div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">{Object.entries(validation.counts).map(([sheet, count]) => <span key={sheet} className="rounded-full bg-white px-3 py-1 shadow-sm">{sheet}: {count} dòng</span>)}</div>{!validation.errors.length && importPayload && <button onClick={() => void saveImportedData()} disabled={importing} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><CheckCircle2 size={16} />{importing ? "Đang nhập vào MySQL..." : "Nhập dữ liệu hợp lệ vào hệ thống"}</button>}</div>}</section>
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900"><Upload size={19} /> Kiểm tra và nhập file CTĐT</h2><p className="mt-1 text-sm text-slate-500">Tải file Excel lên để kiểm tra tên sheet, thứ tự cột, dữ liệu bắt buộc và các liên kết mã. File có lỗi sẽ không thể nhập; cảnh báo về độ đầy đủ dữ liệu sẽ được hiển thị riêng.</p></div><label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"><Upload size={16} /> Chọn file Excel<input type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => void validateUpload(event)} /></label></div>{validation && <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4"><p className="font-semibold text-slate-800">{validation.fileName}</p><div className={`mt-3 flex items-start gap-2 text-sm ${validation.errors.length ? "text-red-700" : "text-emerald-700"}`}>{validation.errors.length ? <AlertCircle size={18} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={18} className="mt-0.5 shrink-0" />}<span>{validation.errors.length ? `Có ${validation.errors.length} lỗi cần sửa trước khi nhập.` : validation.warnings.length ? "File đúng định dạng, nhưng còn cảnh báo về độ đầy đủ của dữ liệu." : "File đúng định dạng, các trường bắt buộc và liên kết mã đều hợp lệ."}</span></div>{validation.errors.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-700">{validation.errors.slice(0, 30).map((message, index) => <li key={`${message}-${index}`}>{message}</li>)}{validation.errors.length > 30 && <li>... và {validation.errors.length - 30} lỗi khác.</li>}</ul>}{validation.warnings.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-700">{validation.warnings.map((message) => <li key={message}>{message}</li>)}</ul>}<div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">{Object.entries(validation.counts).map(([sheet, count]) => <span key={sheet} className="rounded-full bg-white px-3 py-1 shadow-sm">{sheet}: {count} dòng</span>)}</div>{!validation.errors.length && importPayload && <button onClick={() => void saveImportedData()} disabled={importing} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><CheckCircle2 size={16} />{importing ? "Đang nhập vào MySQL..." : "Nhập dữ liệu hợp lệ vào hệ thống"}</button>}</div>}</section>
   </div></AdminLayout>;
 }

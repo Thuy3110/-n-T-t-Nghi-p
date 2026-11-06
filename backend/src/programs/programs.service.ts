@@ -72,6 +72,7 @@ export class ProgramsService {
         include: {
           clo: {
             select: {
+              id: true,
               code: true,
               majorId: true,
               courseMappings: {
@@ -80,7 +81,7 @@ export class ProgramsService {
             },
           },
           plo: { select: { code: true, majorId: true } },
-          course: { select: { code: true, majorId: true } },
+          course: { select: { id: true, code: true, majorId: true } },
         },
         orderBy: { id: 'asc' },
       });
@@ -107,6 +108,26 @@ export class ProgramsService {
         }];
       });
     });
+    const exportedCloCourseCodes = new Map<number, Set<string>>();
+    for (const major of majors) {
+      const majorCourseCodes = new Set(major.courses.map((course) => course.code));
+      for (const clo of major.clos) {
+        const courseCodes = new Set(
+          clo.courseMappings
+            .map((mapping) => mapping.course.code)
+            .filter((courseCode) => majorCourseCodes.has(courseCode)),
+        );
+        for (const matrix of matrices) {
+          if (matrix.clo.id !== clo.id || matrix.clo.majorId !== major.id) {
+            continue;
+          }
+          if (matrix.course?.majorId === major.id) {
+            courseCodes.add(matrix.course.code);
+          }
+        }
+        exportedCloCourseCodes.set(clo.id, courseCodes);
+      }
+    }
 
     return {
       program,
@@ -128,15 +149,16 @@ export class ProgramsService {
         },
         courses: majors.find((major) => major.id === majorId)?.courses ?? [],
         plos: majors.find((major) => major.id === majorId)?.plos ?? [],
-        clos: (majors.find((major) => major.id === majorId)?.clos ?? []).flatMap((clo) =>
-          clo.courseMappings.length
-            ? clo.courseMappings.map((mapping) => ({
+        clos: (majors.find((major) => major.id === majorId)?.clos ?? []).flatMap((clo) => {
+          const courseCodes = [...(exportedCloCourseCodes.get(clo.id) ?? [])];
+          return courseCodes.length
+            ? courseCodes.map((courseCode) => ({
               code: clo.code,
               description: clo.description,
-              courseCode: mapping.course.code,
+              courseCode,
             }))
-            : [{ code: clo.code, description: clo.description, courseCode: '' }],
-        ),
+            : [{ code: clo.code, description: clo.description, courseCode: '' }];
+        }),
       })),
       matrices: exportedMatrices,
     };

@@ -114,14 +114,14 @@ export default function MatrixTable({
                 className="py-5 text-[13px] uppercase tracking-wider font-extrabold"
                 style={{ paddingLeft: "16px", paddingRight: "16px", textAlign: "center", color: "#1e293b" }}
               >
-                MT
+                PLO
               </th>
 
               <th
                 className="py-5 text-[13px] uppercase tracking-wider font-extrabold"
                 style={{ paddingLeft: "16px", paddingRight: "16px", textAlign: "center", color: "#1e293b" }}
               >
-                KG
+                CLO
               </th>
 
               <th
