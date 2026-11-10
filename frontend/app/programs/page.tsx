@@ -33,7 +33,7 @@ function downloadCtdtTemplate() {
     ]),
     ["CTDT", "Thông tin chương trình", "Nhập đúng một dòng; MaCTDT và TenCTDT là bắt buộc."],
     ["NGANH", "Ngành thuộc chương trình", "Nhập ít nhất một ngành; MaNganh, TenNganh và MaCTDT là bắt buộc."],
-    ["HOCPHAN", "Học phần thuộc ngành", "SoTinChi là số nguyên dương; HocKy có thể để trống."],
+    ["HOCPHAN", "Học phần thuộc ngành", "SoTinChi là số nguyên dương; HocKy từ 1 đến 8 (4 năm, 2 học kỳ/năm) hoặc để trống."],
     ["PLO", "Chuẩn đầu ra chương trình", "NguongDat từ 0 đến 100; MaPLOCha để trống nếu không có PLO cha."],
     ["CLO", "Chuẩn đầu ra học phần", "MaNganh và MaHocPhan phải khớp với sheet NGANH và HOCPHAN."],
     ["MA_TRAN_CLO_PLO", "Liên kết CLO với PLO", "MucDongGop: I/R/M hoặc 1/2/3; PhuongPhap: TT hoặc GT."],
@@ -155,7 +155,7 @@ function validateCtdtWorkbook(workbook: XLSX.WorkBook) {
       courseKeys.add(`${majorCode}:${courseCode}`);
     }
     if (!Number.isInteger(Number(row.SoTinChi)) || Number(row.SoTinChi) <= 0) errors.push(`HOCPHAN dòng ${line}: SoTinChi phải là số nguyên dương.`);
-    if (text(row, "HocKy") && (!Number.isInteger(Number(row.HocKy)) || Number(row.HocKy) <= 0)) errors.push(`HOCPHAN dòng ${line}: HocKy phải là số nguyên dương hoặc để trống.`);
+    if (text(row, "HocKy") && (!Number.isInteger(Number(row.HocKy)) || Number(row.HocKy) < 1 || Number(row.HocKy) > 8)) errors.push(`HOCPHAN dòng ${line}: HocKy phải là số nguyên từ 1 đến 8 hoặc để trống.`);
   }
   for (const [index, row] of ploRows.entries()) {
     const line = index + 2;

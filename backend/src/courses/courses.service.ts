@@ -138,6 +138,9 @@ export class CoursesService {
                 ...(dto.credits !== undefined && {
                     credits: dto.credits,
                 }),
+                ...(dto.semester !== undefined && {
+                    semester: dto.semester,
+                }),
                 ...(dto.moduleCode !== undefined && {
                     moduleCode: dto.moduleCode,
                 }),
@@ -161,8 +164,8 @@ export class CoursesService {
     }
 
     async updateSemester(id: number, semester: number) {
-        if (!Number.isInteger(semester) || semester < 1 || semester > 3) {
-            throw new BadRequestException('Học kỳ phải là số nguyên từ 1 đến 3.');
+        if (!Number.isInteger(semester) || semester < 1 || semester > 8) {
+            throw new BadRequestException('Học kỳ phải là số nguyên từ 1 đến 8.');
         }
 
         const course = await this.prisma.course.findUnique({

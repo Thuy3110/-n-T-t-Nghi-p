@@ -1,23 +1,20 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import {
   AlertCircle,
-  Award,
   BookOpen,
   Calendar,
   CheckCircle2,
   Clock,
   Download,
   FileSpreadsheet,
-  GraduationCap,
   Layers,
   RefreshCw,
   Save,
   Sparkles,
   Upload,
-  User,
 } from "lucide-react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import {
@@ -53,6 +50,7 @@ export default function LecturerPortalPage() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [portalData, setPortalData] = useState<MyCoursesResponse | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const selectedCourseIdRef = useRef<number | null>(null);
   const [draftRates, setDraftRates] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -84,22 +82,49 @@ export default function LecturerPortalPage() {
       });
   }, []);
 
+  const initDraftRates = useCallback((course: MyAssignedCourse) => {
+    const draft: Record<number, string> = {};
+    for (const clo of course.clos) {
+      draft[clo.id] = clo.myRate === null ? "" : String(clo.myRate);
+    }
+    setDraftRates(draft);
+  }, []);
+
+  const selectCourse = useCallback((course: MyAssignedCourse) => {
+    selectedCourseIdRef.current = course.id;
+    setSelectedCourseId(course.id);
+    setNotice("");
+    setError("");
+    setExcelSummary(null);
+    initDraftRates(course);
+  }, [initDraftRates]);
+
   // 2. Tải danh sách môn học của giảng viên
-  const loadMyCourses = async (year: number) => {
+  const loadMyCourses = useCallback(async (year: number) => {
     setLoading(true);
     setError("");
     try {
       const res = await getMyAssignedCourses(year);
       setPortalData(res);
-      if (res.courses.length > 0) {
+      const requestedCourseId = Number(new URLSearchParams(window.location.search).get("courseId"));
+      const requestedCourse = Number.isInteger(requestedCourseId)
+        ? res.courses.find((course) => course.id === requestedCourseId)
+        : undefined;
+      if (requestedCourse) {
+        selectCourse(requestedCourse);
+      } else if (requestedCourseId > 0) {
+        if (res.courses[0]) selectCourse(res.courses[0]);
+        setError("Học phần được chọn không có trong danh sách hiện có của tài khoản.");
+      } else if (res.courses.length > 0) {
         // Giữ môn đang chọn nếu hợp lệ, ngược lại chọn môn đầu tiên
-        if (!selectedCourseId || !res.courses.some((c) => c.id === selectedCourseId)) {
+        if (!selectedCourseIdRef.current || !res.courses.some((c) => c.id === selectedCourseIdRef.current)) {
           selectCourse(res.courses[0]);
         } else {
-          const current = res.courses.find((c) => c.id === selectedCourseId);
+          const current = res.courses.find((c) => c.id === selectedCourseIdRef.current);
           if (current) initDraftRates(current);
         }
       } else {
+        selectedCourseIdRef.current = null;
         setSelectedCourseId(null);
         setDraftRates({});
       }
@@ -109,30 +134,15 @@ export default function LecturerPortalPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [initDraftRates, selectCourse]);
 
   useEffect(() => {
     if (selectedYear) {
+      // Loading remote course data is the purpose of this effect.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void loadMyCourses(selectedYear);
     }
-  }, [selectedYear]);
-
-  // Khởi tạo điểm nháp từ dữ liệu đã lưu
-  const initDraftRates = (course: MyAssignedCourse) => {
-    const draft: Record<number, string> = {};
-    for (const clo of course.clos) {
-      draft[clo.id] = clo.myRate === null ? "" : String(clo.myRate);
-    }
-    setDraftRates(draft);
-  };
-
-  const selectCourse = (course: MyAssignedCourse) => {
-    setSelectedCourseId(course.id);
-    setNotice("");
-    setError("");
-    setExcelSummary(null);
-    initDraftRates(course);
-  };
+  }, [loadMyCourses, selectedYear]);
 
   const currentCourse = useMemo(() => {
     return portalData?.courses.find((c) => c.id === selectedCourseId) ?? null;
@@ -159,23 +169,11 @@ export default function LecturerPortalPage() {
     // Tiêu đề cột
     const headers = ["STT", "MaSV", "HoVaTen", ...currentCourse.clos.map((c) => c.code), "GhiChu"];
 
-    // Hàng hướng dẫn CĐR
-    const cloDescRow = ["--", "--", "Mô tả chuẩn đầu ra:", ...currentCourse.clos.map((c) => c.description), "--"];
-
-    // Dữ liệu mẫu minh họa
-    const sampleRows = [
-      [1, "2151010001", "Nguyễn Văn An", ...currentCourse.clos.map(() => 8.5), "Mẫu ví dụ"],
-      [2, "2151010002", "Trần Thị Bình", ...currentCourse.clos.map(() => 6.0), "Mẫu ví dụ"],
-      [3, "2151010003", "Lê Hoàng Cường", ...currentCourse.clos.map(() => 4.5), "Mẫu ví dụ"],
-    ];
-
     const aoaData = [
       [`BẢNG ĐIỂM HỌC PHẦN: ${currentCourse.name.toUpperCase()} (${currentCourse.code})`],
       [`Ngành: ${currentCourse.major.name} | Năm học: ${selectedYear} | Thang điểm: 0 - 10 (Điểm >= 5.0 là Đạt CLO)`],
       [],
       headers,
-      cloDescRow,
-      ...sampleRows,
     ];
 
     const worksheet = XLSX.utils.aoa_to_sheet(aoaData);
@@ -210,16 +208,6 @@ export default function LecturerPortalPage() {
       const sheet = workbook.Sheets[firstSheetName];
       if (!sheet) throw new Error("File Excel không có nội dung.");
 
-      // Đọc toàn bộ dòng
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-        defval: "",
-        raw: false,
-      });
-
-      if (rows.length === 0) {
-        throw new Error("Bảng tính Excel không có dòng dữ liệu nào.");
-      }
-
       // Nhận diện dòng header
       const rawHeaderRows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
       let headerRowIndex = rawHeaderRows.findIndex((row) =>
@@ -231,6 +219,9 @@ export default function LecturerPortalPage() {
       if (headerRowIndex === -1) headerRowIndex = 0;
 
       const actualHeaders = (rawHeaderRows[headerRowIndex] || []).map((h) => String(h || "").trim());
+      const sampleNoteColumn = actualHeaders.findIndex(
+        (header) => header.toLowerCase().replace(/[\s_]/g, "") === "ghichu",
+      );
 
       // Lấy dữ liệu sinh viên từ dòng sau header
       const dataRows = rawHeaderRows.slice(headerRowIndex + 1);
@@ -246,10 +237,10 @@ export default function LecturerPortalPage() {
         }
       }
 
-      const foundClos = Object.keys(cloColIndexes);
-      if (foundClos.length === 0) {
+      const missingClos = currentCourse.clos.filter((clo) => cloColIndexes[clo.code] === undefined);
+      if (missingClos.length > 0) {
         throw new Error(
-          `Không tìm thấy các cột mã CLO (${currentCourse.clos.map((c) => c.code).join(", ")}) trong file Excel. Vui lòng tải file mẫu để kiểm tra đúng cột.`
+          `File thiếu cột CLO: ${missingClos.map((clo) => clo.code).join(", ")}. Vui lòng dùng file mẫu của học phần này.`
         );
       }
 
@@ -271,19 +262,26 @@ export default function LecturerPortalPage() {
         let totalValid = 0;
         let passCount = 0;
 
-        for (const row of dataRows) {
+        for (const [rowIndex, row] of dataRows.entries()) {
+          if (
+            sampleNoteColumn !== -1 &&
+            String(row[sampleNoteColumn] ?? "").toLowerCase().includes("mẫu ví dụ")
+          ) {
+            continue;
+          }
           const rawVal = row[colIdx];
           if (rawVal === undefined || rawVal === null || String(rawVal).trim() === "") continue;
 
-          // Bỏ qua dòng mô tả hướng dẫn nếu có
+          // Bỏ qua các dòng hướng dẫn từ những file mẫu cũ.
           if (String(rawVal).includes("Mô tả") || String(rawVal) === "--") continue;
 
           const num = Number(String(rawVal).replace(",", "."));
-          if (!Number.isNaN(num) && num >= 0 && num <= 10) {
-            totalValid++;
-            if (num >= passThreshold) {
-              passCount++;
-            }
+          if (!Number.isFinite(num) || num < 0 || num > 10) {
+            throw new Error(`Dòng ${headerRowIndex + rowIndex + 2}, cột ${clo.code}: điểm phải là số từ 0 đến 10.`);
+          }
+          totalValid++;
+          if (num >= passThreshold) {
+            passCount++;
           }
         }
 
@@ -297,6 +295,10 @@ export default function LecturerPortalPage() {
           });
           newDraft[clo.id] = String(rate);
         }
+      }
+
+      if (results.length === 0) {
+        throw new Error("File chưa có dòng điểm hợp lệ. Hãy nhập điểm sinh viên rồi tải lại.");
       }
 
       const studentCount = Math.max(...results.map((r) => r.totalCount), 0);
@@ -781,4 +783,3 @@ export default function LecturerPortalPage() {
     </AdminLayout>
   );
 }
-
