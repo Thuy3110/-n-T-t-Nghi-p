@@ -6,6 +6,7 @@ import {
     Min,
     MinLength,
     MaxLength,
+    Max,
 } from 'class-validator';
 
 export class UpdateCourseDto {
@@ -23,8 +24,14 @@ export class UpdateCourseDto {
 
     @IsOptional()
     @IsInt()
-    @Min(0)
+    @Min(1)
     credits?: number;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(8)
+    semester?: number | null;
 
     @IsOptional()
     @IsString()

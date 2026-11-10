@@ -244,7 +244,9 @@ export class ProgramsService {
       if (!code || !clean(row?.TenHocPhan)) throw new ConflictException(`Học phần dòng ${index + 2} phải có mã và tên.`);
       if (courseCodes.has(code)) throw new ConflictException(`Mã học phần ${code} bị trùng trong file CTĐT.`);
       if (!Number.isInteger(credits) || credits <= 0) throw new ConflictException(`Số tín chỉ của học phần ${code} phải là số nguyên dương.`);
-      if (semester && (!Number.isInteger(Number(semester)) || Number(semester) <= 0)) throw new ConflictException(`Học kỳ của học phần ${code} phải là số nguyên dương.`);
+      if (semester && (!Number.isInteger(Number(semester)) || Number(semester) < 1 || Number(semester) > 8)) {
+        throw new ConflictException(`Học kỳ của học phần ${code} phải là số nguyên từ 1 đến 8 hoặc để trống.`);
+      }
       courseCodes.add(code);
       courseKeys.add(`${majorCode}:${code}`);
     }
@@ -354,12 +356,45 @@ export class ProgramsService {
           const majorId = majorIds.get(clean(row.MaNganh).toUpperCase());
           if (!majorId) throw new ConflictException(`Không tìm thấy ngành ${clean(row.MaNganh)} của học phần.`);
           const code = clean(row.MaHocPhan).toUpperCase();
-          const existing = await transaction.course.findUnique({ where: { code }, select: { id: true, majorId: true } });
+          const existing = await transaction.course.findUnique({
+            where: { code },
+            select: {
+              id: true,
+              majorId: true,
+              name: true,
+              credits: true,
+              semester: true,
+              replacementCode: true,
+              replacementName: true,
+            },
+          });
           if (existing && existing.majorId !== majorId) throw new ConflictException(`Học phần ${code} đang thuộc ngành khác.`);
-          const course = existing
-            ? await transaction.course.update({ where: { id: existing.id }, data: { name: clean(row.TenHocPhan), credits: Number(row.SoTinChi), semester: row.HocKy === '' || row.HocKy == null ? null : Number(row.HocKy), replacementCode: clean(row.MaHocPhanThayThe) || null, replacementName: clean(row.TenHocPhanThayThe) || null } })
-            : await transaction.course.create({ data: { code, name: clean(row.TenHocPhan), credits: Number(row.SoTinChi), semester: row.HocKy === '' || row.HocKy == null ? null : Number(row.HocKy), replacementCode: clean(row.MaHocPhanThayThe) || null, replacementName: clean(row.TenHocPhanThayThe) || null, majorId } });
-          courseIds.set(`${majorId}:${code}`, course.id);
+          const courseData = {
+            name: clean(row.TenHocPhan),
+            credits: Number(row.SoTinChi),
+            semester: row.HocKy === '' || row.HocKy == null ? null : Number(row.HocKy),
+            replacementCode: clean(row.MaHocPhanThayThe) || null,
+            replacementName: clean(row.TenHocPhanThayThe) || null,
+          };
+          let courseId: number;
+          if (existing) {
+            courseId = existing.id;
+            const unchanged =
+              existing.name === courseData.name &&
+              existing.credits === courseData.credits &&
+              existing.semester === courseData.semester &&
+              existing.replacementCode === courseData.replacementCode &&
+              existing.replacementName === courseData.replacementName;
+            if (!unchanged) {
+              await transaction.course.update({ where: { id: existing.id }, data: courseData });
+            }
+          } else {
+            const course = await transaction.course.create({
+              data: { code, ...courseData, majorId },
+            });
+            courseId = course.id;
+          }
+          courseIds.set(`${majorId}:${code}`, courseId);
         }
 
         const ploIds = new Map<string, number>();

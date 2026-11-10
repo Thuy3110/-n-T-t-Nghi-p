@@ -134,4 +134,33 @@ describe('ProgramsService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+
+  it('rejects course semesters outside the four-year curriculum before importing', async () => {
+    const prisma = { $transaction: jest.fn() };
+    const programsService = new ProgramsService(
+      prisma as unknown as PrismaService,
+    );
+
+    await expect(
+      programsService.import({
+        ctdt: { MaCTDT: 'CTDT', TenCTDT: 'Chương trình' },
+        nganh: [
+          { MaNganh: 'CNTT', TenNganh: 'Công nghệ thông tin', MaCTDT: 'CTDT' },
+        ],
+        hocphan: [
+          {
+            MaNganh: 'CNTT',
+            MaHocPhan: 'IT101',
+            TenHocPhan: 'Nhập môn',
+            SoTinChi: 3,
+            HocKy: 9,
+          },
+        ],
+        plo: [],
+        clo: [],
+        matrix: [],
+      }),
+    ).rejects.toThrow('Học kỳ của học phần IT101 phải là số nguyên từ 1 đến 8 hoặc để trống.');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
 });

@@ -363,8 +363,26 @@ function MatrixPageContent() {
                                 {clo.code}
                               </td>
                               {(modalMajor?.plos || []).map((plo: any) => {
-                                const sum = clo.id + plo.id;
-                                const val = sum % 3 === 0 ? "I" : sum % 3 === 1 ? "R" : "M";
+                                let levelNum = null;
+                                if (modalMajor?.matrixData) {
+                                  try {
+                                    const parsed = typeof modalMajor.matrixData === "string" ? JSON.parse(modalMajor.matrixData) : modalMajor.matrixData;
+                                    const matchCourseCode = clo.code.split("-")[0];
+                                    levelNum = parsed[`${matchCourseCode}-${plo.code}`] ?? parsed[`${clo.code}-${plo.code}`] ?? null;
+                                  } catch (e) {}
+                                }
+                                if (!levelNum && plo.matrices) {
+                                  const m = plo.matrices.find((mat: any) => mat.cloId === clo.id);
+                                  if (m) levelNum = m.level;
+                                }
+                                const val = levelNum === 1 ? "I" : levelNum === 2 ? "R" : levelNum === 3 ? "M" : null;
+                                if (!val) {
+                                  return (
+                                    <td key={plo.id} className="p-3 text-center align-middle text-slate-300 text-[12px]">
+                                      -
+                                    </td>
+                                  );
+                                }
 
                                 let badgeStyle = "bg-blue-50 text-blue-600 border-blue-100";
                                 let label = "Introduce (I) - Giới thiệu";

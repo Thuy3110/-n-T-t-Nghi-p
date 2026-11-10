@@ -474,7 +474,19 @@ function MatrixEditForm() {
 
         {/* Table Content */}
         <div className="overflow-x-auto" style={{ paddingLeft: "28px", paddingRight: "28px" }}>
-          <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+          <table
+            className="w-full border-collapse"
+            style={{
+              tableLayout: "fixed",
+              minWidth: `${90 + 130 + 260 + plos.length * 85}px`,
+            }}
+          >
+            <colgroup>
+              <col style={{ width: "90px" }} />
+              <col style={{ width: "130px" }} />
+              <col style={{ width: "260px" }} />
+              {plos.map((plo) => <col key={plo.id} style={{ width: "85px" }} />)}
+            </colgroup>
             <thead>
               <tr className="border-b border-slate-100 text-[12px] font-extrabold text-slate-600 select-none">
                 <th className="text-center" style={{ width: "90px", padding: "18px 8px" }}>
@@ -483,7 +495,7 @@ function MatrixEditForm() {
                 <th className="text-left" style={{ width: "130px", padding: "18px 16px" }}>
                   MAMH
                 </th>
-                <th className="text-left" style={{ width: "32%", padding: "18px 16px" }}>
+                <th className="text-left whitespace-nowrap" style={{ width: "260px", padding: "18px 16px" }}>
                   TÊN MÔN HỌC
                 </th>
                 {plos.map((plo) => (
@@ -572,7 +584,7 @@ function MatrixEditForm() {
                     {/* Course Name */}
                     <td
                       className="align-middle text-[13.5px]"
-                      style={{ padding: "18px 16px" }}
+                      style={{ width: "260px", padding: "18px 16px", overflowWrap: "break-word" }}
                     >
                       <span
                         className={
