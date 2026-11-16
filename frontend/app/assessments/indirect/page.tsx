@@ -63,7 +63,7 @@ export default function IndirectAssessmentPage() {
       <div className="flex items-center justify-between gap-4 mb-8">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-[20px] font-bold text-slate-800 tracking-tight leading-none">
-            LOES - Hệ thống đánh giá kết quả học tập
+            Đánh giá gián tiếp (CĐR – GT)
           </h1>
           <p className="text-[12px] text-slate-400 font-medium">
             Phân tích chuyên sâu và Đánh giá Chuẩn đầu ra (CLO/PLO)

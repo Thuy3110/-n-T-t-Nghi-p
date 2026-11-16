@@ -658,9 +658,7 @@ export class LecturerCloAssessmentsService {
           const total = weightedPloTotals.get(plo.id);
           ploRates.set(
             plo.id,
-            total &&
-              total.totalWeight > 0 &&
-              !total.hasMissingAssessment
+            total && total.totalWeight > 0
               ? Number((total.weightedTotal / total.totalWeight).toFixed(2))
               : null,
           );
@@ -694,17 +692,14 @@ export class LecturerCloAssessmentsService {
         const summaryPlos = hasHierarchy
           ? parentPlos
           : major.plos.filter((plo) => !plo.isGroupHeader);
-        const summaryRates = summaryPlos.map(
-          (plo) => ploRates.get(plo.id) ?? null,
-        );
-        const hasCompletePloResults =
-          summaryRates.length > 0 &&
-          summaryRates.every((rate) => rate !== null);
-        const averagePloRate = hasCompletePloResults
+        const assessedRates = summaryPlos
+          .map((plo) => ploRates.get(plo.id) ?? null)
+          .filter((rate): rate is number => rate !== null);
+        const averagePloRate = assessedRates.length > 0
           ? Number(
               (
-                summaryRates.reduce((sum, rate) => sum + (rate ?? 0), 0) /
-                summaryRates.length
+                assessedRates.reduce((sum, rate) => sum + rate, 0) /
+                assessedRates.length
               ).toFixed(2),
             )
           : null;

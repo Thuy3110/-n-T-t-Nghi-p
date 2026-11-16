@@ -4,7 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import MatrixTable from "../../direct/components/MatrixTable";
 import AnalysisPanel from "../../direct/components/AnalysisPanel";
 import { AnalysisConfig, Major } from "./types";
-import { SlidersHorizontal, Download, X, Save, Settings, BookOpen, Info, ShieldCheck, Grid3X3, Pencil, List } from "lucide-react";
+import * as XLSX from "xlsx";
+import { SlidersHorizontal, Download, X, Save, Settings, BookOpen, Info, ShieldCheck, Grid3X3, Pencil, List, GraduationCap } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 // Helper to generate dynamic cohorts based on the current calendar year (from current year down to 2023)
 const generateCohorts = () => {
@@ -44,7 +45,7 @@ function MatrixPageContent() {
     }
   }, [majorIdFromUrl]);
   // States for interactive modals
-  const [activeModal, setActiveModal] = useState<"matrix" | "edit" | "courses" | null>(null);
+  const [activeModal, setActiveModal] = useState<"matrix" | "edit" | "courses" | "plos" | null>(null);
   const [modalMajor, setModalMajor] = useState<any | null>(null);
   const [editPloThreshold, setEditPloThreshold] = useState<number>(75);
   const [editCloThreshold, setEditCloThreshold] = useState<number>(3);
@@ -146,6 +147,69 @@ function MatrixPageContent() {
       .catch((err) => {
         alert("Lỗi khi tải danh sách học phần: " + err.message);
       });
+  };
+
+  // Callback mở Modal Danh sách Chuẩn đầu ra PLO
+  const handleViewPlos = (major: Major) => {
+    fetch(`http://localhost:3001/majors/${major.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setModalMajor(data);
+        setActiveModal("plos");
+      })
+      .catch((err) => {
+        alert("Lỗi khi tải danh sách PLO: " + err.message);
+      });
+  };
+
+  // Callback xuất ma trận trong modal ra Excel
+  const handleExportModalMatrix = () => {
+    if (!modalMajor) return;
+    const plos = modalMajor.plos || [];
+    const clos = modalMajor.clos || [];
+    let parsedMatrix: any = {};
+    if (modalMajor.matrixData) {
+      try {
+        parsedMatrix = typeof modalMajor.matrixData === "string" ? JSON.parse(modalMajor.matrixData) : modalMajor.matrixData;
+      } catch (e) {}
+    }
+    const rows = clos.map((clo: any) => {
+      const matchCourseCode = clo.code.split("-")[0];
+      const row: Record<string, string> = {
+        "Mã CLO": clo.code,
+        "Mô tả CLO": clo.description || "",
+      };
+      plos.forEach((plo: any) => {
+        let levelNum = parsedMatrix[`${matchCourseCode}-${plo.code}`] ?? parsedMatrix[`${clo.code}-${plo.code}`] ?? null;
+        if (!levelNum && plo.matrices) {
+          const m = plo.matrices.find((mat: any) => mat.cloId === clo.id);
+          if (m) levelNum = m.level;
+        }
+        row[plo.code] = levelNum === 1 ? "I" : levelNum === 2 ? "R" : levelNum === 3 ? "M" : "";
+      });
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ma tran CLO-PLO");
+    XLSX.writeFile(workbook, `Ma_tran_CLO_PLO_${modalMajor.majorCode || "Nganh"}.xlsx`);
+  };
+
+  // Callback xuất danh sách PLO ra Excel
+  const handleExportPlos = () => {
+    if (!modalMajor) return;
+    const plos = modalMajor.plos || [];
+    const rows = plos.map((plo: any, idx: number) => ({
+      STT: idx + 1,
+      "Mã PLO": plo.code,
+      "Mô tả Chuẩn đầu ra (PLO)": plo.description || "",
+      "Ngưỡng đạt tối thiểu (%)": `${plo.targetPercent ?? modalMajor.ploThreshold ?? 75}%`,
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Danh sach PLO");
+    XLSX.writeFile(workbook, `Danh_sach_PLO_${modalMajor.majorCode || "Nganh"}.xlsx`);
   };
 
   // Callback lưu cấu hình từ modal chỉnh sửa
@@ -271,6 +335,7 @@ function MatrixPageContent() {
             onViewMatrix={handleViewMatrix}
             onEditConfig={handleEditConfig}
             onViewCourses={handleViewCourses}
+            onViewPlos={handleViewPlos}
           />
         </div>
 
@@ -295,7 +360,7 @@ function MatrixPageContent() {
             className={`
               relative bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.18)] border border-slate-100/50
               w-full max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200
-              ${activeModal === "matrix" ? "max-w-4xl" : activeModal === "courses" ? "max-w-2xl" : "max-w-md"}
+              ${activeModal === "matrix" || activeModal === "plos" ? "max-w-4xl" : activeModal === "courses" ? "max-w-3xl" : "max-w-md"}
             `}
           >
             {/* Modal Header */}
@@ -311,6 +376,12 @@ function MatrixPageContent() {
                   <h3 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
                     <Pencil className="text-emerald-600" size={18} />
                     Cấu hình thông số: Ngành {modalMajor?.majorName || modalMajor?.name || modalMajor?.majorCode}
+                  </h3>
+                )}
+                {activeModal === "plos" && (
+                  <h3 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
+                    <GraduationCap className="text-emerald-600" size={18} />
+                    Danh sách Chuẩn đầu ra (PLO): Ngành {modalMajor?.majorName || modalMajor?.name || modalMajor?.majorCode}
                   </h3>
                 )}
                 {activeModal === "courses" && (
@@ -515,6 +586,7 @@ function MatrixPageContent() {
                     <thead>
                       <tr className="bg-slate-50/80 border-b border-slate-100 sticky top-0 z-10">
                         <th className="p-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[60px]">STT</th>
+                        <th className="p-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[80px]">Học kỳ</th>
                         <th className="p-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[130px]">Mã học phần</th>
                         <th className="p-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tên học phần</th>
                         <th className="p-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[100px]">Số tín chỉ</th>
@@ -528,9 +600,19 @@ function MatrixPageContent() {
                           </td>
                         </tr>
                       ) : (
-                        modalMajor.courses.map((course: any, idx: number) => (
+                        [...(modalMajor.courses || [])].sort((a: any, b: any) => {
+                          const semA = a.semester ?? 999;
+                          const semB = b.semester ?? 999;
+                          if (semA !== semB) return semA - semB;
+                          return String(a.code).localeCompare(String(b.code), "vi");
+                        }).map((course: any, idx: number) => (
                           <tr key={course.id} className="hover:bg-slate-50/50">
                             <td className="p-3 text-[12px] text-slate-400 text-center font-medium">{idx + 1}</td>
+                            <td className="p-3 text-center align-middle">
+                              <span className="inline-block px-2 py-0.5 bg-slate-100 rounded text-[11px] font-bold text-slate-600">
+                                {course.semester ? `HK ${course.semester}` : "—"}
+                              </span>
+                            </td>
                             <td className="p-3 text-[12px] text-blue-600 font-semibold">{course.code}</td>
                             <td className="p-3 text-[13px] text-slate-700 font-semibold">{course.name}</td>
                             <td className="p-3 text-[12px] text-slate-600 text-center">
