@@ -1,0 +1,98 @@
+[
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "Hệ thống thang đo I (Introduce - Giới thiệu), R (Reinforce - Củng cố), M (Mastery - Làm chủ) theo chuẩn kiểm định AUN-QA / ABET",
+    "__EMPTY": null,
+    "__EMPTY_1": null,
+    "__EMPTY_2": null,
+    "__EMPTY_3": null,
+    "__EMPTY_4": null
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "Mã PLO",
+    "__EMPTY": "Tên Năng Lực / Miền Năng Lực",
+    "__EMPTY_1": "Mô Tả Chi Tiết Chuẩn Đầu Ra (PLO)",
+    "__EMPTY_2": "Môn Học Mapping Chính (CLO tương ứng)",
+    "__EMPTY_3": "Mức Đánh Giá (I / R / M)",
+    "__EMPTY_4": "Ghi Chú Mục Tiêu Đạt Được"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO1",
+    "__EMPTY": "Kiến thức Đại cương & Nền tảng Khoa học",
+    "__EMPTY_1": "Vận dụng thành thạo kiến thức về lý luận chính trị, pháp luật đại cương, quốc phòng - an ninh, toán học (Giải tích, Đại số, Xác suất thống kê, Toán rời rạc) và phương pháp nghiên cứu khoa học vào việc phân tích, mô hình hóa các bài toán tin học và công nghệ.",
+    "__EMPTY_2": "PHI101, LAW101, PEM101, MTA103, AGR101, PMS102, DCM201, SRU104",
+    "__EMPTY_3": "R (Reinforce)",
+    "__EMPTY_4": "Củng cố kiến thức nền tảng toán & lý luận vào mô hình hóa"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO2",
+    "__EMPTY": "Cơ sở Công nghệ thông tin & Máy tính",
+    "__EMPTY_1": "Nắm vững nguyên lý hoạt động của máy tính, kiến trúc phần cứng, hệ điều hành, mạng máy tính, cơ sở dữ liệu và bảo mật thông tin để thiết kế và quản trị hạ tầng CNTT vững chắc.",
+    "__EMPTY_2": "CAO201, COS201, OPS201, CPN201, DBS201, DMS201, LIO301",
+    "__EMPTY_3": "R (Reinforce)",
+    "__EMPTY_4": "Củng cố năng lực phân tích phần cứng, mạng và CSDL"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO3",
+    "__EMPTY": "Phân tích, Thiết kế & Phát triển Phần mềm",
+    "__EMPTY_1": "Làm chủ các phương pháp phân tích thiết kế giải thuật, lập trình hướng đối tượng, quy trình công nghệ phần mềm và các kiến trúc hệ thống hiện đại (Web, Mobile, Enterprise) để xây dựng giải pháp phần mềm tối ưu.",
+    "__EMPTY_2": "ITP101, OOP201, DSA201, AAD201, SWE201, SAD202, WEB201, WEB202, MOB201, AJP201",
+    "__EMPTY_3": "M (Mastery)",
+    "__EMPTY_4": "Làm chủ kỹ năng phát triển ứng dụng & kiến trúc phần mềm"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO4",
+    "__EMPTY": "Chuyên sâu Công nghệ tiên tiến",
+    "__EMPTY_1": "Cập nhật và vận dụng kiến thức chuyên sâu thuộc các lĩnh vực công nghệ mới như Trí tuệ nhân tạo (AI), Chuỗi khối (Blockchain), Internet kết nối vạn vật (IoT), Điện toán đám mây (Cloud) và Hệ thống phân tán vào các ứng dụng thực tế.",
+    "__EMPTY_2": "AFI201, BCB101, ABC301, IAD201, CLC301, DSY301, NLP301, IMP201, RPA301",
+    "__EMPTY_3": "M (Mastery)",
+    "__EMPTY_4": "Làm chủ việc nghiên cứu & triển khai công nghệ mới nổi"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO5",
+    "__EMPTY": "Kỹ năng Lập trình & Kỹ thuật Phần mềm",
+    "__EMPTY_1": "Thành thạo kỹ năng viết mã nguồn sạch (clean code), gỡ lỗi, kiểm thử phần mềm (Testing), quản lý phiên bản mã nguồn (Git) và triển khai ứng dụng trên các nền tảng đa dạng (Desktop, Web, Mobile, Cloud).",
+    "__EMPTY_2": "BJP201, PRW201, SOT301, NEP301, AIP202, SOP301",
+    "__EMPTY_3": "M (Mastery)",
+    "__EMPTY_4": "Thành thạo kỹ thuật lập trình, gỡ lỗi & kiểm thử chất lượng"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO6",
+    "__EMPTY": "Kỹ năng Tư duy Phân tích & Giải quyết vấn đề",
+    "__EMPTY_1": "Có khả năng khảo sát nghiệp vụ thực tế, xác định bài toán, lựa chọn cấu trúc dữ liệu - thuật toán - công nghệ phù hợp để thiết kế giải pháp tổng thể giải quyết các vấn đề phức tạp trong kỹ thuật và doanh nghiệp.",
+    "__EMPTY_2": "ISD201, OOD201, NED301, DDS301, ISD202, ECO301, HCI301",
+    "__EMPTY_3": "M (Mastery)",
+    "__EMPTY_4": "Làm chủ tư duy phân tích giải pháp hệ thống tổng thể"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO7",
+    "__EMPTY": "Kỹ năng Ngoại ngữ & Giao tiếp Chuyên môn",
+    "__EMPTY_1": "Sử dụng hiệu quả Tiếng Anh (hoặc Tiếng Nhật / Tiếng Hàn) trong giao tiếp, đọc hiểu tài liệu kỹ thuật, viết báo cáo giải pháp và thuyết trình chuyên môn trước đối tác, hội đồng hoặc khách hàng.",
+    "__EMPTY_2": "BAE101-BAE104, EIT301-EIT302, BAJ101-INJ202, BAK101-INK302, CMB105",
+    "__EMPTY_3": "R (Reinforce)",
+    "__EMPTY_4": "Củng cố phản xạ giao tiếp & báo cáo kỹ thuật đa ngôn ngữ"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO8",
+    "__EMPTY": "Kỹ năng Làm việc nhóm & Quản lý Dự án",
+    "__EMPTY_1": "Thành thạo kỹ năng làm việc nhóm, điều phối công việc, lập kế hoạch, kiểm soát tiến độ và quản lý rủi ro dự án phần mềm theo các mô hình Agile/Scrum hoặc PMBOK.",
+    "__EMPTY_2": "PRM301, ETR312, AAD202, ISD202, SOP301, FIP402",
+    "__EMPTY_3": "M (Mastery)",
+    "__EMPTY_4": "Làm chủ kỹ năng điều phối dự án & làm việc nhóm chuyên nghiệp"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO9",
+    "__EMPTY": "Tác phong Nghề nghiệp & Đạo đức CNTT",
+    "__EMPTY_1": "Thực hiện đúng các quy định về an toàn thông tin, tuân thủ bản quyền phần mềm, bảo mật dữ liệu cá nhân/doanh nghiệp và thể hiện đạo đức nghề nghiệp, tính kiên trì, cẩn trọng trong công việc kỹ thuật.",
+    "__EMPTY_2": "BIN101, DBS201, SWE201, AFI201, PRT401, INT402",
+    "__EMPTY_3": "R (Reinforce)",
+    "__EMPTY_4": "Củng cố ý thức tuân thủ pháp luật, đạo đức & an toàn dữ liệu"
+  },
+  {
+    "DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)": "PLO10",
+    "__EMPTY": "Tự học & Thích ứng Chuyển đổi số",
+    "__EMPTY_1": "Có năng lực tự học, tự nghiên cứu, chủ động cập nhật các xu hướng công nghệ mới nổi và sẵn sàng thích ứng với sự thay đổi liên tục của thị trường lao động và nền kinh tế số.",
+    "__EMPTY_2": "SRU104, DGE101, NTO301, PRT401, INT402, FIP402",
+    "__EMPTY_3": "M (Mastery)",
+    "__EMPTY_4": "Làm chủ năng lực tự nghiên cứu & thích ứng công nghệ mới"
+  }
+]
