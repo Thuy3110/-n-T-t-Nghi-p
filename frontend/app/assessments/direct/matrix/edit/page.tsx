@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import * as XLSX from "xlsx";
 import {
   AlertCircle,
   Download,
@@ -23,6 +24,7 @@ interface CourseItem {
   code: string;
   name: string;
   credits: number;
+  semester?: number | null;
 }
 
 const levelCodes: Record<number, string> = { 1: "I", 2: "R", 3: "M" };
@@ -70,7 +72,17 @@ function normalizeCourses(value: unknown): CourseItem[] {
       code: String(course.code),
       name: String(course.name),
       credits: Number(course.credits ?? 0),
-    }));
+      semester:
+        course.semester !== undefined && course.semester !== null
+          ? Number(course.semester)
+          : null,
+    }))
+    .sort((a, b) => {
+      const semA = a.semester ?? 999;
+      const semB = b.semester ?? 999;
+      if (semA !== semB) return semA - semB;
+      return a.code.localeCompare(b.code, "vi");
+    });
 }
 
 function normalizePlos(value: unknown): PLOItem[] {
@@ -328,21 +340,27 @@ function MatrixEditForm() {
   };
 
   const handleExportExcel = () => {
-    let csv = "MAMH,Tên môn học," + plos.map((p) => p.code).join(",") + "\n";
-    courses.forEach((c) => {
-      const row = [
-        c.code,
-        `"${c.name}"`,
-        ...plos.map((p) => getCellValue(c, p) || ""),
-      ];
-      csv += row.join(",") + "\n";
+    const rows = courses.map((c) => {
+      const row: Record<string, string | number> = {
+        HK: c.semester ? `HK ${c.semester}` : "—",
+        "Mã học phần": c.code,
+        "Tên học phần": c.name,
+        "Số tín chỉ": c.credits,
+      };
+      for (const p of plos) {
+        const val = getCellValue(c, p);
+        row[p.code] = val === 1 ? "I" : val === 2 ? "R" : val === 3 ? "M" : "";
+      }
+      return row;
     });
 
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Ma_tran_CDR_Nganh_${majorCode}_Khoa_${cohortYear}.csv`;
-    link.click();
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ma tran CDR");
+    XLSX.writeFile(
+      workbook,
+      `Ma_tran_CDR_Nganh_${majorCode || "Major"}_Khoa_${cohortYear}.xlsx`
+    );
   };
 
   if (loading) {
@@ -478,11 +496,12 @@ function MatrixEditForm() {
             className="w-full border-collapse"
             style={{
               tableLayout: "fixed",
-              minWidth: `${90 + 130 + 260 + plos.length * 85}px`,
+              minWidth: `${90 + 70 + 130 + 260 + plos.length * 85}px`,
             }}
           >
             <colgroup>
               <col style={{ width: "90px" }} />
+              <col style={{ width: "70px" }} />
               <col style={{ width: "130px" }} />
               <col style={{ width: "260px" }} />
               {plos.map((plo) => <col key={plo.id} style={{ width: "85px" }} />)}
@@ -491,6 +510,9 @@ function MatrixEditForm() {
               <tr className="border-b border-slate-100 text-[12px] font-extrabold text-slate-600 select-none">
                 <th className="text-center" style={{ width: "90px", padding: "18px 8px" }}>
                   CHỌN
+                </th>
+                <th className="text-center" style={{ width: "70px", padding: "18px 8px" }}>
+                  HK
                 </th>
                 <th className="text-left" style={{ width: "130px", padding: "18px 16px" }}>
                   MAMH
@@ -514,7 +536,7 @@ function MatrixEditForm() {
               {courses.length === 0 && (
                 <tr>
                   <td
-                    colSpan={3 + plos.length}
+                    colSpan={4 + plos.length}
                     className="px-5 py-16 text-center text-sm text-slate-400"
                   >
                     {error
@@ -569,6 +591,13 @@ function MatrixEditForm() {
                           />
                         </button>
                       </div>
+                    </td>
+
+                    {/* Semester HK */}
+                    <td className="text-center align-middle text-[12px] font-bold text-slate-500" style={{ padding: "18px 8px" }}>
+                      <span className="inline-block px-2 py-0.5 bg-slate-100 rounded-md text-[11px] text-slate-600">
+                        {course.semester ? `HK ${course.semester}` : "—"}
+                      </span>
                     </td>
 
                     {/* Course Code */}

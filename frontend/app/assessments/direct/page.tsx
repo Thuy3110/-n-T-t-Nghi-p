@@ -134,7 +134,7 @@ export default function DirectAssessmentPage() {
       >
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "#0f172a", margin: 0 }}>
-            Đo lường - Đánh giá CĐR (TT)
+            Đánh giá trực tiếp (CĐR – TT)
           </h1>
           <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#64748b", marginTop: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#22c55e", display: "inline-block", flexShrink: 0 }} />

@@ -11,6 +11,7 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
+  GraduationCap,
 } from "lucide-react";
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
   onViewMatrix?: (major: Major) => void;
   onEditConfig?: (major: Major) => void;
   onViewCourses?: (major: Major) => void;
+  onViewPlos?: (major: Major) => void;
 }
 
 export default function MatrixTable({
@@ -33,6 +35,7 @@ export default function MatrixTable({
   onViewMatrix,
   onEditConfig,
   onViewCourses,
+  onViewPlos,
 }: Props) {
   const router = useRouter();
 
@@ -194,9 +197,17 @@ export default function MatrixTable({
                     </td>
 
                     <td className="py-5 align-middle" style={{ paddingLeft: "16px", paddingRight: "16px", textAlign: "center" }}>
-                      <span className="text-[14px] text-emerald-600 font-bold">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onViewPlos) onViewPlos(major);
+                        }}
+                        className="text-[14px] text-emerald-600 font-bold hover:underline cursor-pointer bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 transition hover:bg-emerald-100"
+                        title="Xem danh sách Chuẩn đầu ra (PLO)"
+                      >
                         {formatNumber(major.plo)}
-                      </span>
+                      </button>
                     </td>
 
                     <td className="py-5 align-middle" style={{ paddingLeft: "16px", paddingRight: "16px", textAlign: "center" }}>
@@ -256,9 +267,20 @@ export default function MatrixTable({
                           }}
                           className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer"
                           style={{ width: "32px", height: "32px", backgroundColor: "#eef2ff", color: "#4f46e5", borderColor: "#e0e7ff" }}
-                          title="Danh sách"
+                          title="Danh sách học phần"
                         >
                           <List size={15} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onViewPlos) onViewPlos(major);
+                          }}
+                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer"
+                          style={{ width: "32px", height: "32px", backgroundColor: "#ecfdf5", color: "#059669", borderColor: "#d1fae5" }}
+                          title="Danh sách CĐR (PLO)"
+                        >
+                          <GraduationCap size={15} />
                         </button>
                         <button
                           onClick={(e) => {

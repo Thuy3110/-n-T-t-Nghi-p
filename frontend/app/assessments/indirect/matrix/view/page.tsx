@@ -125,6 +125,35 @@ function MatrixViewContent() {
         setSavedMatrixValues(parsedMatrix);
         setEnabledCourses(parsedEnabledCourses);
         setMajor(data);
+        // Load I,R,M mapping from static JSON and apply to matrixValues
+        fetch('/data/irm.json')
+          .then((r) => r.json())
+          .then((irmData) => {
+            // Skip header rows (first two entries)
+            const rows = irmData.slice(2);
+            const newValues: Record<string, number | null> = { ...matrixValues };
+            rows.forEach((row: any) => {
+              const ploCode = row["DANH SÁCH CHUẨN ĐẦU RA PLO KÈM MỨC ĐỘ ĐÁNH GIÁ (I, R, M)"]; // PLO code
+              const mapping = row["__EMPTY_2"]; // course codes list
+              const levelStr = row["__EMPTY_3"] as string; // e.g., "R (Reinforce)"
+              if (!ploCode || !mapping || !levelStr) return;
+              const levelChar = levelStr.trim().charAt(0); // I,R,M
+              const levelNum = levelChar === "I" ? 1 : levelChar === "R" ? 2 : levelChar === "M" ? 3 : null;
+              if (levelNum === null) return;
+              const courseCodes = mapping.split(/[,;]+/).map((c: string) => c.trim()).filter(Boolean);
+              const plo = data.plos?.find((p: any) => p.code === ploCode);
+              if (!plo) return;
+              courseCodes.forEach((code: string) => {
+                const course = data.courses?.find((c: any) => c.code === code);
+                if (course) {
+                  newValues[`${course.id}-${plo.id}`] = levelNum;
+                }
+              });
+            });
+            setMatrixValues(newValues);
+            setSavedMatrixValues(newValues);
+          })
+          .catch((e) => console.error('Failed to load I,R,M mapping', e));
       } catch (cause) {
         if (cause instanceof Error && cause.name === "AbortError") return;
         setError(cause instanceof Error ? cause.message : "Không thể tải ma trận.");
@@ -139,7 +168,13 @@ function MatrixViewContent() {
   }, [invalidMajorId, majorId]);
 
   const courses = useMemo(
-    () => [...(major?.courses ?? [])].sort((a, b) => a.code.localeCompare(b.code, "vi")),
+    () =>
+      [...(major?.courses ?? [])].sort((a, b) => {
+        const semA = a.semester ?? 999;
+        const semB = b.semester ?? 999;
+        if (semA !== semB) return semA - semB;
+        return a.code.localeCompare(b.code, "vi");
+      }),
     [major],
   );
   const hasUnsavedChanges = JSON.stringify(matrixValues) !== JSON.stringify(savedMatrixValues);
@@ -370,10 +405,10 @@ function MatrixViewContent() {
             <div className="max-w-full overflow-x-auto">
               <table className="w-full table-fixed border-separate border-spacing-0">
                 <colgroup>
-                  <col style={{ width: 72 }} />
-                  <col style={{ width: 128 }} />
+                  <col style={{ width: 80 }} />
+                  <col style={{ width: 120 }} />
                   <col style={{ width: 220 }} />
-                  {(major?.plos ?? []).map((plo) => <col key={plo.id} />)}
+                  {(major?.plos ?? []).map((plo) => <col key={plo.id} style={{ width: 140 }} />)}
                 </colgroup>
                 <thead>
                   <tr className="bg-[#eaf3fc] text-xs font-semibold text-slate-700">
@@ -381,9 +416,20 @@ function MatrixViewContent() {
                     <th className="px-2 py-4 text-left">Mã học phần</th>
                     <th className="px-2 py-4 text-left">Học phần</th>
                     {(major?.plos ?? []).map((plo) => (
-                      <th key={plo.id} className="px-1 py-4 text-center" title={plo.description}>
-                        <span className="block">{plo.code}</span>
-                        <span className="mt-1 block break-words text-[9px] font-normal text-slate-500">{plo.description}</span>
+                      <th
+                        key={plo.id}
+                        className="px-2 py-3 text-center align-top border-l border-slate-200/60"
+                        title={`${plo.code}: ${plo.description}`}
+                      >
+                        <span className="inline-block px-2 py-0.5 rounded font-bold text-xs bg-white text-blue-800 shadow-sm border border-blue-200/50">
+                          {plo.code}
+                        </span>
+                        <div
+                          className="mt-1.5 text-[10.5px] font-normal leading-snug text-slate-600 line-clamp-3 text-left hover:line-clamp-none transition-all cursor-help"
+                          title={plo.description}
+                        >
+                          {plo.description}
+                        </div>
                       </th>
                     ))}
                   </tr>
