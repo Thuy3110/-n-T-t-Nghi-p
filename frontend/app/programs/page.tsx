@@ -407,8 +407,10 @@ export default function ProgramsPage() {
         setSelectedEvaluationYear(orderedYears[0] ?? new Date().getFullYear());
       })
       .catch((cause: unknown) => {
-        console.error("Lỗi tải các năm học đánh giá CTĐT:", cause);
-        setError("Không tải được năm học đánh giá CTĐT.");
+        console.warn("Lỗi tải các năm học đánh giá CTĐT, sử dụng năm mặc định:", cause);
+        const currentYear = new Date().getFullYear();
+        setEvaluationYears([currentYear, currentYear - 1, currentYear - 2, currentYear - 3]);
+        setSelectedEvaluationYear(currentYear);
       });
   }, []);
 

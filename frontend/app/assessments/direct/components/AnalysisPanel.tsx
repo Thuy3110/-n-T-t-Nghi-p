@@ -12,6 +12,9 @@ import {
   History,
   CheckCircle2,
   BarChart2,
+  ShieldCheck,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 
 interface Props {
@@ -219,6 +222,45 @@ export default function AnalysisPanel({ majors = [], loading = false }: Props) {
           </div>
           <div className="w-11 h-11 rounded-full bg-amber-100/50 flex items-center justify-center text-amber-600 shadow-inner">
             <FileCheck size={20} />
+          </div>
+        </div>
+      </div>
+
+      {/* MATRIX LOGIC AUDIT & WARNINGS (OBE / AUN-QA STANDARDS) */}
+      <div className="px-8" style={{ paddingTop: "28px" }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5 text-slate-700">
+            <ShieldCheck size={16} className="text-emerald-600" />
+            <h3 className="text-[12px] font-black uppercase tracking-wider text-slate-800">
+              Kiểm định & Cảnh báo
+            </h3>
+          </div>
+          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+            AUN-QA / ABET
+          </span>
+        </div>
+
+        <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100/90 flex flex-col gap-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11.5px] font-bold text-slate-600">Giám sát tải PLO</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-md border border-emerald-100">
+              <CheckCircle2 size={12} /> Thời gian thực
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-1 border-t border-slate-200/50 text-[11px] text-slate-600">
+            <div className="flex items-start gap-2">
+              <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0" />
+              <p className="leading-snug">
+                <strong className="text-slate-800">Cảnh báo nhồi nhét:</strong> Tự động báo động đỏ khi môn học đóng góp <span className="text-rose-600 font-bold">&gt; 5 PLO</span>.
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 mt-1 shrink-0" />
+              <p className="leading-snug">
+                <strong className="text-slate-800">Cảnh báo bỏ sót:</strong> Phát hiện học phần chưa được gán bất kỳ chuẩn đầu ra nào.
+              </p>
+            </div>
           </div>
         </div>
       </div>

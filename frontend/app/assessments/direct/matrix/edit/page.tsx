@@ -547,6 +547,12 @@ function MatrixEditForm() {
               )}
               {courses.map((course) => {
                 const isEnabled = isCourseEnabled(course);
+                const coursePloCount = plos.filter((plo) => {
+                  const val = getCellValue(course, plo);
+                  return val !== null && val !== undefined && val !== 0;
+                }).length;
+                const isOverloaded = isEnabled && coursePloCount > 5;
+                const isMissingPlo = isEnabled && coursePloCount === 0;
 
                 return (
                   <tr
@@ -610,20 +616,41 @@ function MatrixEditForm() {
                       </span>
                     </td>
 
-                    {/* Course Name */}
+                    {/* Course Name with Validation Warnings */}
                     <td
                       className="align-middle text-[13.5px]"
                       style={{ width: "260px", padding: "18px 16px", overflowWrap: "break-word" }}
                     >
-                      <span
-                        className={
-                          isEnabled
-                            ? "text-slate-800 font-bold"
-                            : "text-slate-400 font-medium"
-                        }
-                      >
-                        {course.name}
-                      </span>
+                      <div className="flex flex-col gap-1.5">
+                        <span
+                          className={
+                            isEnabled
+                              ? "text-slate-800 font-bold"
+                              : "text-slate-400 font-medium"
+                          }
+                        >
+                          {course.name}
+                        </span>
+                        {/* Cảnh báo logic thời gian thực theo chuẩn AUN-QA / ABET */}
+                        {isOverloaded && (
+                          <div
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-md w-fit"
+                            title="Cảnh báo nhồi nhét: Môn học đóng góp > 5 PLO, khuyến nghị khoa/bộ môn thu hẹp trọng tâm để đảm bảo tính khả thi đo lường."
+                          >
+                            <AlertCircle size={12} className="shrink-0 text-rose-600" />
+                            <span>Quá tải: {coursePloCount} PLO</span>
+                          </div>
+                        )}
+                        {isMissingPlo && (
+                          <div
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md w-fit"
+                            title="Cảnh báo bỏ sót: Học phần đang hoạt động nhưng chưa được ánh xạ vào bất kỳ Chuẩn đầu ra PLO nào."
+                          >
+                            <AlertCircle size={12} className="shrink-0 text-amber-600" />
+                            <span>Chưa gán PLO</span>
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     {/* Matrix Cells */}
