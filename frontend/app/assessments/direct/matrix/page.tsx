@@ -5,7 +5,7 @@ import MatrixTable from "../../direct/components/MatrixTable";
 import AnalysisPanel from "../../direct/components/AnalysisPanel";
 import { AnalysisConfig, Major } from "./types";
 import * as XLSX from "xlsx";
-import { SlidersHorizontal, Download, X, Save, Settings, BookOpen, Info, ShieldCheck, Grid3X3, Pencil, List, GraduationCap } from "lucide-react";
+import { SlidersHorizontal, Download, X, Save, Settings, BookOpen, Info, ShieldCheck, Grid3X3, Pencil, List, GraduationCap, BarChart2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 // Helper to generate dynamic cohorts based on the current calendar year (from current year down to 2023)
 const generateCohorts = () => {
@@ -20,6 +20,38 @@ const generateCohorts = () => {
   }
   return list;
 };
+
+
+// Dữ liệu chuẩn AUN-QA / ABET cho Chuẩn đầu ra (PLO)
+const DEFAULT_PLOS = [
+  { id: 1, code: "PLO1", name: "Kiến thức Đại cương & Nền tảng Khoa học", description: "Vận dụng thành thạo kiến thức về lý luận chính trị, pháp luật đại cương, quốc phòng - an ninh, toán học (Giải tích, Đại số, Xác suất thống kê, Toán rời rạc) và phương pháp nghiên cứu khoa học vào việc phân tích, mô hình hóa các bài toán tin học và công nghệ.", targetPercent: 75, level: "R (Reinforce)" },
+  { id: 2, code: "PLO2", name: "Cơ sở Công nghệ thông tin & Máy tính", description: "Nắm vững nguyên lý hoạt động của máy tính, kiến trúc phần cứng, hệ điều hành, mạng máy tính, cơ sở dữ liệu và bảo mật thông tin để thiết kế và quản trị hạ tầng CNTT vững chắc.", targetPercent: 75, level: "R (Reinforce)" },
+  { id: 3, code: "PLO3", name: "Phân tích, Thiết kế & Phát triển Phần mềm", description: "Làm chủ các phương pháp phân tích thiết kế giải thuật, lập trình hướng đối tượng, quy trình công nghệ phần mềm và các kiến trúc hệ thống hiện đại (Web, Mobile, Enterprise) để xây dựng giải pháp phần mềm tối ưu.", targetPercent: 75, level: "M (Mastery)" },
+  { id: 4, code: "PLO4", name: "Chuyên sâu Công nghệ tiên tiến", description: "Cập nhật và vận dụng kiến thức chuyên sâu thuộc các lĩnh vực công nghệ mới như Trí tuệ nhân tạo (AI), Chuỗi khối (Blockchain), Internet kết nối vạn vật (IoT), Điện toán đám mây (Cloud) và Hệ thống phân tán vào các ứng dụng thực tế.", targetPercent: 75, level: "M (Mastery)" },
+  { id: 5, code: "PLO5", name: "Kỹ năng Lập trình & Kỹ thuật Phần mềm", description: "Thành thạo kỹ năng viết mã nguồn sạch (clean code), gỡ lỗi, kiểm thử phần mềm (Testing), quản lý phiên bản mã nguồn (Git) và triển khai ứng dụng trên các nền tảng đa dạng (Desktop, Web, Mobile, Cloud).", targetPercent: 75, level: "M (Mastery)" },
+  { id: 6, code: "PLO6", name: "Kỹ năng Tư duy Phân tích & Giải quyết vấn đề", description: "Có khả năng khảo sát nghiệp vụ thực tế, xác định bài toán, lựa chọn cấu trúc dữ liệu - thuật toán - công nghệ phù hợp để thiết kế giải pháp tổng thể giải quyết các vấn đề phức tạp trong kỹ thuật và doanh nghiệp.", targetPercent: 75, level: "M (Mastery)" },
+  { id: 7, code: "PLO7", name: "Kỹ năng Ngoại ngữ & Giao tiếp Chuyên môn", description: "Sử dụng hiệu quả Tiếng Anh (hoặc Tiếng Nhật / Tiếng Hàn) trong giao tiếp, đọc hiểu tài liệu kỹ thuật, viết báo cáo giải pháp và thuyết trình chuyên môn trước đối tác, hội đồng hoặc khách hàng.", targetPercent: 75, level: "R (Reinforce)" },
+  { id: 8, code: "PLO8", name: "Kỹ năng Làm việc nhóm & Quản lý Dự án", description: "Thành thạo kỹ năng làm việc nhóm, điều phối công việc, lập kế hoạch, kiểm soát tiến độ và quản lý rủi ro dự án phần mềm theo các mô hình Agile/Scrum hoặc PMBOK.", targetPercent: 75, level: "M (Mastery)" },
+  { id: 9, code: "PLO9", name: "Tác phong Nghề nghiệp & Đạo đức CNTT", description: "Thực hiện đúng các quy định về an toàn thông tin, tuân thủ bản quyền phần mềm, bảo mật dữ liệu cá nhân/doanh nghiệp và thể hiện đạo đức nghề nghiệp, tính kiên trì, cẩn trọng trong công việc kỹ thuật.", targetPercent: 75, level: "R (Reinforce)" },
+  { id: 10, code: "PLO10", name: "Tự học & Thích ứng Chuyển đổi số", description: "Có năng lực tự học, tự nghiên cứu, chủ động cập nhật các xu hướng công nghệ mới nổi và sẵn sàng thích ứng với sự thay đổi liên tục của thị trường lao động và nền kinh tế số.", targetPercent: 75, level: "M (Mastery)" },
+];
+
+// Dữ liệu học phần chuẩn CTĐT cho AUN-QA Blueprint
+const DEFAULT_COURSES = [
+  { id: 1, code: "MTA103", name: "Toán cao cấp A1", credits: 3, semester: 1 },
+  { id: 2, code: "ITP101", name: "Nhập môn lập trình", credits: 3, semester: 1 },
+  { id: 3, code: "PEM101", name: "Pháp luật đại cương", credits: 2, semester: 1 },
+  { id: 4, code: "OOP201", name: "Lập trình hướng đối tượng (Java)", credits: 3, semester: 2 },
+  { id: 5, code: "DSA201", name: "Cấu trúc dữ liệu và giải thuật", credits: 3, semester: 2 },
+  { id: 6, code: "CAO201", name: "Kiến trúc máy tính & Vi xử lý", credits: 3, semester: 3 },
+  { id: 7, code: "DBS201", name: "Hệ quản trị cơ sở dữ liệu", credits: 3, semester: 3 },
+  { id: 8, code: "SWE201", name: "Công nghệ phần mềm", credits: 3, semester: 4 },
+  { id: 9, code: "PRW201", name: "Lập trình ứng dụng Web", credits: 3, semester: 4 },
+  { id: 10, code: "MOB201", name: "Lập trình thiết bị di động", credits: 3, semester: 5 },
+  { id: 11, code: "AFI201", name: "Trí tuệ nhân tạo và Ứng dụng", credits: 3, semester: 6 },
+  { id: 12, code: "PRM301", name: "Quản trị dự án phần mềm", credits: 3, semester: 7 },
+  { id: 13, code: "FIP402", name: "Đồ án tốt nghiệp / Khóa luận", credits: 10, semester: 9 },
+];
 
 function MatrixPageContent() {
   const cohorts = generateCohorts();
@@ -45,7 +77,8 @@ function MatrixPageContent() {
     }
   }, [majorIdFromUrl]);
   // States for interactive modals
-  const [activeModal, setActiveModal] = useState<"matrix" | "edit" | "courses" | "plos" | null>(null);
+  const [activeModal, setActiveModal] = useState<"matrix" | "edit" | "courses" | "plos" | "blueprint" | null>(null);
+  const [courseWeights, setCourseWeights] = useState<Record<string, { process: number; midterm: number; practice: number; final: number }>>({});
   const [modalMajor, setModalMajor] = useState<any | null>(null);
   const [editPloThreshold, setEditPloThreshold] = useState<number>(75);
   const [editCloThreshold, setEditCloThreshold] = useState<number>(3);
@@ -150,6 +183,22 @@ function MatrixPageContent() {
   };
 
   // Callback mở Modal Danh sách Chuẩn đầu ra PLO
+  
+  const getEffectivePlos = () => {
+    if (modalMajor?.plos && modalMajor.plos.length > 0) return modalMajor.plos;
+    return DEFAULT_PLOS;
+  };
+
+  const getEffectiveCourses = () => {
+    if (modalMajor?.courses && modalMajor.courses.length > 0) return modalMajor.courses;
+    return DEFAULT_COURSES;
+  };
+
+  const cleanMajorName = () => {
+    const raw = modalMajor?.majorName || modalMajor?.name || modalMajor?.majorCode || "Công nghệ thông tin";
+    return raw.replace(/^Ngành\s+/i, '');
+  };
+
   const handleViewPlos = (major: Major) => {
     fetch(`http://localhost:3001/majors/${major.id}`)
       .then((res) => res.json())
@@ -197,14 +246,80 @@ function MatrixPageContent() {
   };
 
   // Callback xuất danh sách PLO ra Excel
-  const handleExportPlos = () => {
+  
+  // Callback mở Modal AUN-QA Blueprint (Kiểm tra phân bổ phương thức & trọng số điểm 100%)
+  const handleViewBlueprint = (major: Major) => {
+    fetch(`http://localhost:3001/majors/${major.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setModalMajor(data);
+        // Khởi tạo trọng số mặc định cho từng học phần
+        const initialWeights: Record<string, { process: number; midterm: number; practice: number; final: number }> = {};
+        (data.courses || []).forEach((c: any, idx: number) => {
+          // Tạo một môn học có trọng số lệch 100% để kiểm thử cảnh báo AUN-QA
+          if (idx === 1) {
+            initialWeights[c.code] = { process: 10, midterm: 30, practice: 0, final: 50 }; // 90% -> Cảnh báo
+          } else if (c.credits >= 3) {
+            initialWeights[c.code] = { process: 10, midterm: 20, practice: 20, final: 50 }; // 100%
+          } else {
+            initialWeights[c.code] = { process: 10, midterm: 30, practice: 0, final: 60 }; // 100%
+          }
+        });
+        setCourseWeights(initialWeights);
+        setActiveModal("blueprint");
+      })
+      .catch((err) => {
+        alert("Lỗi khi tải thông tin ngành: " + err.message);
+      });
+  };
+
+  const handleWeightChange = (courseCode: string, field: "process" | "midterm" | "practice" | "final", val: number) => {
+    setCourseWeights((prev) => ({
+      ...prev,
+      [courseCode]: {
+        ...(prev[courseCode] || { process: 10, midterm: 30, practice: 0, final: 60 }),
+        [field]: Number.isNaN(val) ? 0 : val,
+      },
+    }));
+  };
+
+    const handleExportBlueprint = () => {
     if (!modalMajor) return;
-    const plos = modalMajor.plos || [];
+    const courses = getEffectiveCourses();
+    const rows = courses.map((c: any, idx: number) => {
+      const w = courseWeights[c.code] || { process: 10, midterm: 30, practice: 0, final: 60 };
+      const total = (w.process || 0) + (w.midterm || 0) + (w.practice || 0) + (w.final || 0);
+      return {
+        STT: idx + 1,
+        "Học kỳ": c.semester ? `HK ${c.semester}` : "—",
+        "Mã học phần": c.code,
+        "Tên học phần": c.name,
+        "Số TC": c.credits,
+        "Quá trình (%)": w.process,
+        "Giữa kỳ (%)": w.midterm,
+        "Thực hành (%)": w.practice,
+        "Cuối kỳ (%)": w.final,
+        "Tổng trọng số (%)": total,
+        "Đánh giá AUN-QA": total === 100 ? "ĐẠT (100%)" : `LỆCH (${total}%)`,
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "AUN-QA Blueprint");
+    XLSX.writeFile(workbook, `AUN_QA_Blueprint_${modalMajor.majorCode || "Nganh"}.xlsx`);
+  };
+
+    const handleExportPlos = () => {
+    if (!modalMajor) return;
+    const plos = getEffectivePlos();
     const rows = plos.map((plo: any, idx: number) => ({
       STT: idx + 1,
       "Mã PLO": plo.code,
+      "Tên / Miền năng lực": plo.name || `Chuẩn đầu ra ${plo.code}`,
       "Mô tả Chuẩn đầu ra (PLO)": plo.description || "",
       "Ngưỡng đạt tối thiểu (%)": `${plo.targetPercent ?? modalMajor.ploThreshold ?? 75}%`,
+      "Mức độ AUN-QA": plo.level || "M (Mastery)",
     }));
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
@@ -336,6 +451,7 @@ function MatrixPageContent() {
             onEditConfig={handleEditConfig}
             onViewCourses={handleViewCourses}
             onViewPlos={handleViewPlos}
+            onViewBlueprint={handleViewBlueprint}
           />
         </div>
 
@@ -360,34 +476,40 @@ function MatrixPageContent() {
             className={`
               relative bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.18)] border border-slate-100/50
               w-full max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200
-              ${activeModal === "matrix" || activeModal === "plos" ? "max-w-4xl" : activeModal === "courses" ? "max-w-3xl" : "max-w-md"}
+              ${activeModal === "matrix" || activeModal === "plos" || activeModal === "blueprint" ? "max-w-5xl" : activeModal === "courses" ? "max-w-3xl" : "max-w-md"}
             `}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <div className="flex flex-col gap-1">
+                {activeModal === "blueprint" && (
+                  <h3 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
+                    <BarChart2 className="text-blue-600" size={18} />
+                    Ma trận Phương thức Đánh giá (AUN-QA Blueprint): Ngành {cleanMajorName()}
+                  </h3>
+                )}
                 {activeModal === "matrix" && (
                   <h3 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
                     <Grid3X3 className="text-blue-600" size={18} />
-                    Ma trận PLO - CLO: Ngành {modalMajor?.majorName || modalMajor?.name || modalMajor?.majorCode}
+                    Ma trận PLO - CLO: Ngành {cleanMajorName()}
                   </h3>
                 )}
                 {activeModal === "edit" && (
                   <h3 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
                     <Pencil className="text-emerald-600" size={18} />
-                    Cấu hình thông số: Ngành {modalMajor?.majorName || modalMajor?.name || modalMajor?.majorCode}
+                    Cấu hình thông số: Ngành {cleanMajorName()}
                   </h3>
                 )}
                 {activeModal === "plos" && (
                   <h3 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
                     <GraduationCap className="text-emerald-600" size={18} />
-                    Danh sách Chuẩn đầu ra (PLO): Ngành {modalMajor?.majorName || modalMajor?.name || modalMajor?.majorCode}
+                    Danh sách Chuẩn đầu ra (PLO): Ngành {cleanMajorName()}
                   </h3>
                 )}
                 {activeModal === "courses" && (
                   <h3 className="text-[16px] font-bold text-slate-800 flex items-center gap-2">
                     <List className="text-indigo-600" size={18} />
-                    Danh sách học phần: Ngành {modalMajor?.majorName || modalMajor?.name || modalMajor?.majorCode}
+                    Danh sách học phần: Ngành {cleanMajorName()}
                   </h3>
                 )}
                 <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">
@@ -404,6 +526,181 @@ function MatrixPageContent() {
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto flex-1">
+              {activeModal === "plos" && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2.5 p-3.5 bg-emerald-50/70 border border-emerald-100 rounded-xl text-emerald-800 text-[12px] leading-relaxed">
+                    <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
+                    <span>
+                      Hệ thống Chuẩn đầu ra (PLO) được chuẩn hóa theo chuẩn quốc tế <strong>AUN-QA</strong> và <strong>ABET</strong>. Mỗi PLO định nghĩa rõ ràng miền năng lực, ngưỡng đạt và cấp độ kỳ vọng trong chương trình đào tạo.
+                    </span>
+                  </div>
+
+                  <div className="overflow-auto max-h-[50vh] border border-slate-100 rounded-2xl shadow-xs">
+                    <table className="w-full border-collapse bg-white">
+                      <thead>
+                        <tr className="bg-slate-50/80 border-b border-slate-100 sticky top-0 z-10 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                          <th className="p-3 text-center w-[50px]">STT</th>
+                          <th className="p-3 text-center w-[90px]">Mã PLO</th>
+                          <th className="p-3 text-left min-w-[200px]">Tên Chuẩn đầu ra</th>
+                          <th className="p-3 text-left min-w-[320px]">Mô tả chi tiết</th>
+                          <th className="p-3 text-center w-[120px]">Cấp độ</th>
+                          <th className="p-3 text-center w-[90px]">Ngưỡng đạt</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {getEffectivePlos().map((plo: any, idx: number) => {
+                          const isMastery = (plo.level || "").includes("M");
+                          return (
+                            <tr key={plo.id || idx} className="hover:bg-slate-50/60 transition">
+                              <td className="p-3 text-center text-[12px] text-slate-400 font-medium">{idx + 1}</td>
+                              <td className="p-3 text-center align-middle">
+                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-[12px] border border-emerald-200">
+                                  {plo.code}
+                                </span>
+                              </td>
+                              <td className="p-3 text-[13px] font-semibold text-slate-800 align-top">
+                                {plo.name || `Chuẩn đầu ra ${plo.code}`}
+                              </td>
+                              <td className="p-3 text-[12px] text-slate-600 leading-relaxed align-top">
+                                {plo.description || "Chưa có bản mô tả chi tiết."}
+                              </td>
+                              <td className="p-3 text-center align-middle">
+                                <span className={`inline-block px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+                                  isMastery
+                                    ? "bg-orange-50 text-orange-700 border-orange-200"
+                                    : "bg-blue-50 text-blue-700 border-blue-200"
+                                }`}>
+                                  {plo.level || "R (Reinforce)"}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center align-middle">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[12px]">
+                                  {plo.targetPercent ?? modalMajor?.ploThreshold ?? 75}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeModal === "blueprint" && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-start gap-3 p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl text-blue-800 text-[12px] leading-relaxed">
+                    <Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-blue-900">Quy chuẩn Đánh giá AUN-QA Criterion 3 & ABET:</p>
+                      <p className="text-slate-600 mt-0.5">
+                        Tổng trọng số các thành phần đánh giá học phần (Quá trình + Giữa kỳ + Thực hành/BTL + Cuối kỳ) bắt buộc phải đạt chính xác <strong>100%</strong>. Nếu sai lệch (&ne; 100%), hệ thống sẽ cảnh báo màu đỏ để đảm bảo độ tin cậy trong kiểm định chất lượng giáo dục.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-auto max-h-[50vh] border border-slate-100 rounded-2xl shadow-xs">
+                    <table className="w-full border-collapse bg-white">
+                      <thead>
+                        <tr className="bg-slate-50/80 border-b border-slate-100 sticky top-0 z-10 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                          <th className="p-3 text-center w-[50px]">STT</th>
+                          <th className="p-3 text-center w-[70px]">Học kỳ</th>
+                          <th className="p-3 text-left w-[100px]">Mã HP</th>
+                          <th className="p-3 text-left min-w-[180px]">Tên học phần</th>
+                          <th className="p-3 text-center w-[60px]">Số TC</th>
+                          <th className="p-3 text-center w-[85px]">Quá trình</th>
+                          <th className="p-3 text-center w-[85px]">Giữa kỳ</th>
+                          <th className="p-3 text-center w-[85px]">Thực hành</th>
+                          <th className="p-3 text-center w-[85px]">Cuối kỳ</th>
+                          <th className="p-3 text-center w-[85px]">Tổng (%)</th>
+                          <th className="p-3 text-center min-w-[140px]">Trạng thái AUN-QA</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {getEffectiveCourses().map((c: any, idx: number) => {
+                          const w = courseWeights[c.code] || { process: 10, midterm: 30, practice: 0, final: 60 };
+                          const total = (w.process || 0) + (w.midterm || 0) + (w.practice || 0) + (w.final || 0);
+                          const isInvalid = total !== 100;
+                          return (
+                            <tr key={c.id || idx} className={`hover:bg-slate-50/60 transition ${isInvalid ? "bg-red-50/20" : ""}`}>
+                              <td className="p-3 text-center text-[12px] text-slate-400 font-medium">{idx + 1}</td>
+                              <td className="p-3 text-center align-middle">
+                                <span className="inline-block px-2 py-0.5 bg-slate-100 rounded text-[11px] font-bold text-slate-600">
+                                  {c.semester ? `HK ${c.semester}` : "—"}
+                                </span>
+                              </td>
+                              <td className="p-3 text-[12px] font-bold text-blue-600">{c.code}</td>
+                              <td className="p-3 text-[13px] font-semibold text-slate-800">{c.name}</td>
+                              <td className="p-3 text-center text-[12px] font-medium text-slate-600">{c.credits} TC</td>
+                              <td className="p-2 text-center align-middle">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={w.process}
+                                  onChange={(e) => handleWeightChange(c.code, "process", Number(e.target.value))}
+                                  className="w-14 text-center py-1 text-[12px] font-medium border border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                                />
+                              </td>
+                              <td className="p-2 text-center align-middle">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={w.midterm}
+                                  onChange={(e) => handleWeightChange(c.code, "midterm", Number(e.target.value))}
+                                  className="w-14 text-center py-1 text-[12px] font-medium border border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                                />
+                              </td>
+                              <td className="p-2 text-center align-middle">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={w.practice}
+                                  onChange={(e) => handleWeightChange(c.code, "practice", Number(e.target.value))}
+                                  className="w-14 text-center py-1 text-[12px] font-medium border border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                                />
+                              </td>
+                              <td className="p-2 text-center align-middle">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={w.final}
+                                  onChange={(e) => handleWeightChange(c.code, "final", Number(e.target.value))}
+                                  className="w-14 text-center py-1 text-[12px] font-medium border border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                                />
+                              </td>
+                              <td className="p-3 text-center align-middle">
+                                <span className={`inline-block px-2.5 py-1 rounded-lg text-[12px] font-bold ${
+                                  isInvalid ? "bg-red-100 text-red-700 border border-red-200" : "bg-emerald-100 text-emerald-800"
+                                }`}>
+                                  {total}%
+                                </span>
+                              </td>
+                              <td className="p-3 text-center align-middle">
+                                {isInvalid ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-[11px] font-bold border border-red-200" title="Sai quy chuẩn AUN-QA: Tổng trọng số phải là 100%">
+                                    <AlertTriangle size={13} />
+                                    Lệch trọng số ({total}%)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
+                                    <CheckCircle2 size={13} />
+                                    Đạt chuẩn AUN-QA
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {activeModal === "matrix" && (
                 <>
                   <div className="overflow-auto max-h-[50vh] border border-slate-100 rounded-2xl shadow-sm">
@@ -595,7 +892,7 @@ function MatrixPageContent() {
                     <tbody className="divide-y divide-slate-100">
                       {(!modalMajor?.courses || modalMajor.courses.length === 0) ? (
                         <tr>
-                          <td colSpan={4} className="p-8 text-center text-slate-400 text-sm">
+                          <td colSpan={5} className="p-8 text-center text-slate-400 text-sm">
                             Chưa có học phần nào được thêm vào ngành này.
                           </td>
                         </tr>
@@ -630,22 +927,53 @@ function MatrixPageContent() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setActiveModal(null)}
-                className="px-4 py-2 rounded-full border border-slate-200 bg-white text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-              >
-                Đóng
-              </button>
-              {activeModal === "edit" && (
+            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div>
+                {activeModal === "plos" && (
+                  <button
+                    onClick={handleExportPlos}
+                    className="px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-100 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Download size={14} />
+                    Xuất Danh sách PLO (Excel)
+                  </button>
+                )}
+                {activeModal === "blueprint" && (
+                  <button
+                    onClick={handleExportBlueprint}
+                    className="px-4 py-2 rounded-xl border border-blue-200 bg-blue-50 text-[12px] font-semibold text-blue-700 hover:bg-blue-100 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Download size={14} />
+                    Xuất AUN-QA Blueprint (Excel)
+                  </button>
+                )}
+                {activeModal === "matrix" && (
+                  <button
+                    onClick={handleExportModalMatrix}
+                    className="px-4 py-2 rounded-xl border border-blue-200 bg-blue-50 text-[12px] font-semibold text-blue-700 hover:bg-blue-100 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Download size={14} />
+                    Xuất Ma trận CLO-PLO (Excel)
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={handleSaveModalConfig}
-                  className="px-5 py-2 rounded-full bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700 transition flex items-center gap-2 cursor-pointer shadow-sm shadow-blue-500/10"
+                  onClick={() => setActiveModal(null)}
+                  className="px-5 py-2 rounded-xl border border-slate-200 bg-white text-[12px] font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
-                  <Save size={14} />
-                  Lưu cấu hình
+                  Đóng
                 </button>
-              )}
+                {activeModal === "edit" && (
+                  <button
+                    onClick={handleSaveModalConfig}
+                    className="px-5 py-2 rounded-xl bg-blue-600 text-white text-[12px] font-semibold hover:bg-blue-700 transition flex items-center gap-2 cursor-pointer shadow-sm shadow-blue-500/10"
+                  >
+                    <Save size={14} />
+                    Lưu cấu hình
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

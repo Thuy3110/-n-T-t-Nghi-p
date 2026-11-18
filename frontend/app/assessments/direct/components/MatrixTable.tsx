@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   GraduationCap,
+  BarChart2,
 } from "lucide-react";
 
 interface Props {
@@ -24,6 +25,7 @@ interface Props {
   onEditConfig?: (major: Major) => void;
   onViewCourses?: (major: Major) => void;
   onViewPlos?: (major: Major) => void;
+  onViewBlueprint?: (major: Major) => void;
 }
 
 export default function MatrixTable({
@@ -36,6 +38,7 @@ export default function MatrixTable({
   onEditConfig,
   onViewCourses,
   onViewPlos,
+  onViewBlueprint,
 }: Props) {
   const router = useRouter();
 
@@ -191,9 +194,17 @@ export default function MatrixTable({
                     </td>
 
                     <td className="py-5 align-middle" style={{ paddingLeft: "20px", paddingRight: "20px", textAlign: "center" }}>
-                      <span className="inline-flex items-center justify-center bg-slate-100/80 text-slate-600 w-8 h-8 rounded-lg text-[13px] font-bold">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onViewCourses) onViewCourses(major);
+                        }}
+                        className="inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 w-8 h-8 rounded-lg text-[13px] font-bold transition cursor-pointer"
+                        title="Xem danh sách Học phần"
+                      >
                         {formatNumber(major.subjectCount)}
-                      </span>
+                      </button>
                     </td>
 
                     <td className="py-5 align-middle" style={{ paddingLeft: "16px", paddingRight: "16px", textAlign: "center" }}>
@@ -203,7 +214,7 @@ export default function MatrixTable({
                           e.stopPropagation();
                           if (onViewPlos) onViewPlos(major);
                         }}
-                        className="text-[14px] text-emerald-600 font-bold hover:underline cursor-pointer bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 transition hover:bg-emerald-100"
+                        className="text-[14px] text-emerald-600 font-bold hover:underline cursor-pointer bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 transition hover:bg-emerald-100"
                         title="Xem danh sách Chuẩn đầu ra (PLO)"
                       >
                         {formatNumber(major.plo)}
@@ -222,8 +233,8 @@ export default function MatrixTable({
                       </span>
                     </td>
 
-                    <td className="py-5 align-middle" style={{ paddingLeft: "32px", paddingRight: "32px", textAlign: "center" }}>
-                      <div className="flex justify-center items-center" style={{ gap: "10px" }}>
+                    <td className="py-5 align-middle" style={{ paddingLeft: "24px", paddingRight: "24px", textAlign: "center" }}>
+                      <div className="flex justify-center items-center" style={{ gap: "8px" }}>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -231,7 +242,7 @@ export default function MatrixTable({
                               `/assessments/direct/matrix/framework?majorId=${major.id}&cohort=${cohort}`,
                             );
                           }}
-                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer"
+                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer hover:bg-blue-100"
                           style={{ width: "32px", height: "32px", backgroundColor: "#eff6ff", color: "#1a73e8", borderColor: "#dbeafe" }}
                           title="Thiết lập khung đánh giá CĐR (TT)"
                         >
@@ -243,9 +254,9 @@ export default function MatrixTable({
                             onSelect(major.id);
                             if (onViewMatrix) onViewMatrix(major);
                           }}
-                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer"
+                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer hover:bg-blue-100"
                           style={{ width: "32px", height: "32px", backgroundColor: "#eff6ff", color: "#1a73e8", borderColor: "#dbeafe" }}
-                          title="Ma trận"
+                          title="Ma trận PLO - CLO"
                         >
                           <Grid3X3 size={15} />
                         </button>
@@ -254,7 +265,7 @@ export default function MatrixTable({
                             e.stopPropagation();
                             router.push(`/assessments/direct/matrix/edit?id=${major.id}&cohort=${cohort}`);
                           }}
-                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer"
+                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer hover:bg-emerald-100"
                           style={{ width: "32px", height: "32px", backgroundColor: "#ecfdf5", color: "#047857", borderColor: "#d1fae5" }}
                           title="Sửa ma trận"
                         >
@@ -263,45 +274,22 @@ export default function MatrixTable({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (onViewCourses) onViewCourses(major);
+                            if (onViewBlueprint) onViewBlueprint(major);
                           }}
-                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer"
-                          style={{ width: "32px", height: "32px", backgroundColor: "#eef2ff", color: "#4f46e5", borderColor: "#e0e7ff" }}
-                          title="Danh sách học phần"
+                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer hover:bg-blue-100"
+                          style={{ width: "32px", height: "32px", backgroundColor: "#eff6ff", color: "#2563eb", borderColor: "#dbeafe" }}
+                          title="Ma trận Phương thức Đánh giá (AUN-QA Blueprint)"
                         >
-                          <List size={15} />
+                          <BarChart2 size={15} />
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (onViewPlos) onViewPlos(major);
-                          }}
-                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer"
-                          style={{ width: "32px", height: "32px", backgroundColor: "#ecfdf5", color: "#059669", borderColor: "#d1fae5" }}
-                          title="Danh sách CĐR (PLO)"
-                        >
-                          <GraduationCap size={15} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            alert(`Bảng thao tác bổ sung cho ngành: ${major.majorName}`);
-                          }}
-                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer"
-                          style={{ width: "32px", height: "32px", backgroundColor: "#fffbeb", color: "#b45309", borderColor: "#fef3c7" }}
-                          title="Khác"
-                        >
-                          <MoreVertical size={15} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-
                             router.push(
                               `/assessments/direct/matrix/sync?id=${major.id}&cohort=${cohort}`
                             );
                           }}
-                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer hover:scale-105"
+                          className="rounded-lg flex items-center justify-center border transition duration-150 cursor-pointer hover:bg-emerald-100"
                           style={{
                             width: "32px",
                             height: "32px",
@@ -309,7 +297,7 @@ export default function MatrixTable({
                             color: "#059669",
                             borderColor: "#d1fae5",
                           }}
-                          title="Đồng bộ"
+                          title="Đồng bộ kết quả"
                         >
                           <RotateCw size={15} />
                         </button>

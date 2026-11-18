@@ -447,13 +447,40 @@ function MatrixViewContent() {
                   ) : (
                     courses.map((course) => {
                       const enabled = isCourseEnabled(course);
+                      const coursePloCount = (major?.plos ?? []).filter((plo) => {
+                        const val = getCellValue(course, plo);
+                        return val !== null && val !== undefined && val !== 0;
+                      }).length;
+                      const isOverloaded = enabled && coursePloCount > 5;
+                      const isMissingPlo = enabled && coursePloCount === 0;
+
                       return (
                         <tr key={course.id} className={`group border-t border-slate-100 text-sm ${enabled ? "hover:bg-slate-50/70" : "bg-slate-50/60 text-slate-400"}`}>
                           <td className={`px-2 py-3 font-semibold text-slate-700 ${enabled ? "bg-white group-hover:bg-slate-50" : "bg-slate-50"}`}>
                             {course.semester ? `HK ${course.semester}` : <span className="font-normal text-slate-400">Chưa có HK</span>}
                           </td>
                           <td className={`break-words px-2 py-3 font-semibold ${enabled ? "text-blue-700" : "text-slate-400"}`}>{course.code}</td>
-                          <td className="break-words px-2 py-3">{course.name}</td>
+                          <td className="break-words px-2 py-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium text-slate-800">{course.name}</span>
+                              {isOverloaded && (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-md w-fit"
+                                  title="Cảnh báo nhồi nhét: Môn học đóng góp > 5 PLO, khuyến nghị khoa/bộ môn thu hẹp trọng tâm để đảm bảo tính khả thi đo lường."
+                                >
+                                  ⚠️ Quá tải: {coursePloCount} PLO
+                                </span>
+                              )}
+                              {isMissingPlo && (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md w-fit"
+                                  title="Cảnh báo bỏ sót: Học phần đang hoạt động nhưng chưa được ánh xạ vào bất kỳ Chuẩn đầu ra PLO nào."
+                                >
+                                  ⚠️ Chưa gán PLO
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           {major?.plos.map((plo) => {
                             const value = enabled ? getCellValue(course, plo) : null;
                             const cellId = `${course.id}-${plo.id}`;

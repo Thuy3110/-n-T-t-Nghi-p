@@ -23,7 +23,6 @@ type AuthenticatedRequest = Request & {
 };
 
 @Controller('assessments/lecturer-clo')
-@UseGuards(JwtAuthGuard, LecturerAssessmentRoleGuard)
 export class LecturerCloAssessmentsController {
   constructor(
     private readonly lecturerCloAssessmentsService: LecturerCloAssessmentsService,
@@ -34,6 +33,7 @@ export class LecturerCloAssessmentsController {
     return this.lecturerCloAssessmentsService.listYears();
   }
 
+  @UseGuards(JwtAuthGuard, LecturerAssessmentRoleGuard)
   @Get('my-courses')
   getMyCourses(
     @Query('academicYear', ParseIntPipe) academicYear: number,
@@ -45,6 +45,7 @@ export class LecturerCloAssessmentsController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, LecturerAssessmentRoleGuard)
   @Post('course')
   saveCourseAssessments(
     @Body() data: SaveCourseCloAssessmentsDto,
@@ -56,21 +57,25 @@ export class LecturerCloAssessmentsController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, LecturerAssessmentRoleGuard)
   @Get('assignments')
   getAssignments() {
     return this.lecturerCloAssessmentsService.getAssignments();
   }
 
+  @UseGuards(JwtAuthGuard, LecturerAssessmentRoleGuard)
   @Post('assign')
   assignCourses(@Body() data: AssignLecturerCoursesDto) {
     return this.lecturerCloAssessmentsService.assignCourses(data);
   }
 
+  @UseGuards(JwtAuthGuard, LecturerAssessmentRoleGuard)
   @Get('report')
   getProgramReport(@Query('academicYear', ParseIntPipe) academicYear: number) {
     return this.lecturerCloAssessmentsService.getProgramReport(academicYear);
   }
 
+  @UseGuards(JwtAuthGuard, LecturerAssessmentRoleGuard)
   @Get()
   getMajorAssessments(
     @Query('majorId', ParseIntPipe) majorId: number,
@@ -84,6 +89,7 @@ export class LecturerCloAssessmentsController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, LecturerAssessmentRoleGuard)
   @Post()
   saveAssessments(
     @Body() data: SaveLecturerCloAssessmentsDto,
